@@ -3,48 +3,84 @@ body {
     overscroll-behavior: contain;
 }
 
-.mainContainer {
-    display: grid;
-    grid-template-areas:
-        "header"
-        "interface"
-        "footer";
-    grid-template-rows: 1em 1fr 0em;
+form {
+    display: flex;
+    flex-direction: column;
+}
 
-    height: 94%;
+textarea {
+    width: 100%;
+}
 
-    padding: .5em;
-    background-color: rgb(235, 245, 255);
-    border-radius: .5em;
-    box-shadow: 0 0 4px 4px black;
+.none {
+    display: none;
+}
 
-    .headerContainer {
-        grid-area: header;
-        align-self: center;
-        justify-self: center;
+.bodyContainer {
+    display: flex;
+    flex-direction: row;
 
-        button {
-            position: relative;
-            z-index: 50;
+    background-color: antiquewhite;
+
+    .playersSideWidget {
+        position: relative;
+        width: 10em;
+
+        background-color: rgba(255, 238, 0, 0.473);
+
+        .addPlayersButton {
+            position: absolute;
+            right: 0;
         }
     }
-    
-    .defaultInterfaceContainer {
-        grid-area: interface;
-        display: grid;
+
+    .mainWidget {
+        flex-grow: 5;
+        background-color: rgba(155, 145, 241, 0.452);
     }
-    
-    .interfaceSelectButton {
-        border-radius: 1em;
-        margin: .2em;
+
+    .playerMainWidget {
+        background-color: rgba(226, 43, 43, 0.452);
+    }
+
+    .divisionsWidget {
+        position: relative;
+        background-color: rgba(43, 226, 73, 0.452);
+
+        .addDivisionButton {
+            position: absolute;
+            right: 0;
+        }
+
+        .divisionWidget {
+            background-color: rgba(43, 46, 226, 0.507);
+            margin: 5px;
+
+            .roundsContainer {
+                position: relative;
+
+                .addRoundButton {
+                    position: absolute;
+                    right: 0;
+                }
+
+                .roundWidget {
+                    position: relative;
+                    background-color: gold;
+                    margin: 5px;
+
+                    .addPoolButton {
+                        position: absolute;
+                        right: 0;
+                    }
+
+                    .poolWidget {
+                        position: relative;
+                        background-color: rgb(63, 204, 209);
+                        margin: 5px;
+                    }
+                }
+            }
+        }
     }
 }
-
-.noHeader {
-    grid-template-areas:
-    "interface"
-    "footer";
-
-    grid-template-rows: 1fr 0em;
-}
-
