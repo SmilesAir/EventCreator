@@ -12,5 +12,6 @@ module.exports = Mobx.observable({
         setupData: testData
     }],
     isPlayerMainWidgetEnabled: true,
-    playerData: {}
+    playerData: {},
+    cachedFullNames: []
 })

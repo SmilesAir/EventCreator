@@ -20,6 +20,12 @@ module.exports.downloadPlayerAndEventData = function() {
     }).then((data) => {
         MainStore.playerData = data.players
 
+        MainStore.cachedFullNames = []
+        for (let id in MainStore.playerData) {
+            let playerData = MainStore.playerData[id]
+            MainStore.cachedFullNames.push(playerData.firstName + " " + playerData.lastName)
+        }
+
         console.log(data)
     }).catch((error) => {
         console.error(`Failed to download Player data: ${error}`)
