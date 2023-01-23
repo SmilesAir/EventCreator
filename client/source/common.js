@@ -148,3 +148,23 @@ module.exports.getPlayerNameString = function(playerKey) {
 
     return name
 }
+
+module.exports.getSortedJudgeKeyArray = function(poolData) {
+    let judges = []
+    for (let judgeKey in poolData.judges) {
+        judges.push({
+            judgeKey: judgeKey,
+            categoryType: poolData.judges[judgeKey]
+        })
+    }
+
+    judges.sort((a, b) => {
+        if (a.categoryType === b.categoryType) {
+            return a.judgeKey.localeCompare(b.judgeKey)
+        } else {
+            return a.categoryType.localeCompare(b.categoryType)
+        }
+    })
+
+    return judges.map((data) => data.judgeKey)
+}

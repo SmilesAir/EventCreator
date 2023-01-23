@@ -321,7 +321,7 @@ require("index.less")
     getPoolWidgets() {
         return this.props.roundData.poolNames.map((name, i) => {
             let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionName, this.props.roundData.name, name)
-            return <PoolWidget key={i} poolName={name} poolKey={poolKey} />
+            return <PoolWidget key={i} divisionName={this.props.divisionName} poolName={name} poolKey={poolKey} />
         })
     }
 
@@ -340,20 +340,80 @@ require("index.less")
 }
 
 @MobxReact.observer class PoolWidget extends React.Component {
-    constructor() {
-        super()
+    constructor(props) {
+        super(props)
+
+        MainStore.eventData.eventData.poolMap[this.props.poolKey] = MainStore.eventData.eventData.poolMap[this.props.poolKey] || {
+            key: this.props.poolKey,
+            judges: {},
+            teamData: []
+        }
+        this.poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
     }
 
     onAddTeam(e) {
 
     }
 
+    getAddTeamOptions() {
+        let options = []
+        for (let team of MainStore.eventData.eventData.divisionData[this.props.divisionName].teams) {
+            let teamExists = this.poolData.teamData.find((teamData) => {
+                return teamData.players.find((playerKey) => {
+                    return team[0] === playerKey
+                }) !== undefined
+            }) !== undefined
+
+            if (!teamExists) {
+                options.push({
+                    value: team,
+                    label: Common.getPlayerNamesString(team)
+                })
+            }
+        }
+
+        return options
+    }
+
+    onAddTeamSelected(selected) {
+        this.poolData.teamData.push({
+            players: selected.value,
+            judgeData: {}
+        })
+    }
+
+    getTeamsWidget() {
+        let widgets = this.poolData.teamData.map((teamData, index) => {
+            return (
+                <div key={Math.random()} className="team">
+                    <button>X</button>
+                    {index + 1}.
+                    <div>
+                        {Common.getPlayerNamesString(teamData.players)}
+                    </div>
+                    <button>^</button>
+                    <button>v</button>
+                </div>
+            )
+        })
+        return (
+            <div className="teams">
+                {widgets.reverse()}
+            </div>
+        )
+    }
+
     render() {
         return (
             <div className="poolWidget">
                 {`Pool ${this.props.poolName}`}
-                <div>
+                <h3>
                     Teams
+                </h3>
+                <div>
+                    Add Team
+                    <ReactSelect value={null} options={this.getAddTeamOptions()} onChange={(e) => this.onAddTeamSelected(e)} />
+                    {this.getTeamsWidget()}
                 </div>
                 <div>
                     Judges
