@@ -16,18 +16,23 @@ module.exports = @MobxReact.observer class PlayersSideWidget extends React.Compo
     }
 
     getPlayers() {
-        let eventData = Common.getEventData()
+        if (MainStore.eventData === undefined) {
+            return null
+        }
 
-        return eventData.setupData.players.map((data, i) => {
-            let playerData = MainStore.playerData[data.id]
+        let playerWidgets = []
+        for (let playerKey in MainStore.eventData.eventData.playerData) {
+            let playerData = MainStore.playerData[playerKey]
             if (playerData !== undefined) {
-                return (
-                    <div key={i}>
-                        {`${i + 1}. ${playerData.firstName + " " + playerData.lastName}`}
+                playerWidgets.push(
+                    <div key={playerKey}>
+                        {`${playerWidgets.length + 1}. ${playerData.firstName + " " + playerData.lastName}`}
                     </div>
                 )
             }
-        })
+        }
+
+        return playerWidgets
     }
 
     render() {

@@ -28,16 +28,6 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
         }, 1000)
     }
 
-    findByFullName(inFullName) {
-        for (let id in MainStore.playerData) {
-            let playerData = MainStore.playerData[id]
-            let fullName = playerData.firstName + " " + playerData.lastName
-            if (inFullName === fullName) {
-                return playerData
-            }
-        }
-    }
-
     onInputTextChanged(e) {
         this.state.inputText = e.target.value
 
@@ -47,13 +37,13 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
         for (let line of lines) {
             line = line.trim()
             if (line.length > 0) {
-                let playerData = this.findByFullName(line)
+                let playerData = Common.findPlayerByFullName(line)
                 if (playerData !== undefined) {
                     this.state.inputPlayerMatches.push({
-                        id: playerData.key,
+                        key: playerData.key,
                         fullName: playerData.firstName + " " + playerData.lastName,
                         isExactMatch: true,
-                        isAdded: this.isPlayerAdded(playerData)
+                        isAdded: this.isPlayerAdded(playerData.key)
                     })
                 } else {
                     this.state.inputPlayerMatches.push({
@@ -97,28 +87,22 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
     }
 
     onEventPlayersChanged() {
-        let eventData = Common.getEventData()
-        eventData.setupData.players = eventData.setupData.players.slice().sort((a, b) => {
-            let aFullName = a.firstName + " " + a.lastName
-            let bFullName = b.firstName + " " + b.lastName
-            return aFullName.localeCompare(bFullName)
-        })
-
+        Common.updateCachedRegisteredFullNames()
         Common.onEventDataChanged()
 
         this.setState(this.state)
     }
 
     addExactMatch(matchData) {
-        let eventData = Common.getEventData()
-        if (eventData.setupData.players.find((data) => data.id === matchData.id)) {
+        if (this.isPlayerAdded(matchData.key)) {
             return
         }
 
         matchData.isAdded = true
-        eventData.setupData.players.push({
-            id: matchData.id
-        })
+        MainStore.eventData.eventData.playerData[matchData.key] = {
+            key: matchData.key,
+            name: matchData.fullName
+        }
 
         this.onEventPlayersChanged()
     }
@@ -146,18 +130,22 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
 
         matchData.isFinding = false
         matchData.isAdded = true
-        matchData.id = playerData.key
+        matchData.key = playerData.key
 
-        let eventData = Common.getEventData()
-        eventData.setupData.players.push({
-            id: playerData.key
-        })
+        MainStore.eventData.eventData.playerData[playerData.key] = {
+            key: playerData.key,
+            name: playerData.fullName
+        }
 
         this.onEventPlayersChanged()
     }
 
-    isPlayerAdded(playerData) {
-        return Common.getEventData().setupData.players.find((player) => player.id === playerData.key) !== undefined
+    isPlayerAdded(playerKey) {
+        if (MainStore.eventData === undefined) {
+            return false
+        }
+
+        return MainStore.eventData.eventData.playerData[playerKey] !== undefined
     }
 
     onAddNewPlayer(firstName, lastName, matchData) {
@@ -173,7 +161,7 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
             MainStore.playerData[data.addedPlayer.key] = data.addedPlayer
 
             matchData.isAdded = true
-            matchData.id = data.addedPlayer.key
+            matchData.key = data.addedPlayer.key
             this.addExactMatch(matchData)
         }).catch((error) => {
             console.error(`Failed to Add New Player: ${error}`)
@@ -185,10 +173,10 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
             if (data.isFinding === true) {
                 let fuzzyResults = Fuzzysort.go(data.fullName, MainStore.cachedFullNames)
                 let candidatePlayerData = fuzzyResults.map((fuzzyData) => {
-                    return this.findByFullName(fuzzyData.target)
+                    return Common.findPlayerByFullName(fuzzyData.target)
                 })
                 let candidates = candidatePlayerData.map((playerData, playerIndex) => {
-                    if (this.isPlayerAdded(playerData)) {
+                    if (this.isPlayerAdded(playerData.key)) {
                         return (
                             <div key={playerIndex} className="candidate">
                                 <div>
@@ -239,17 +227,17 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
 
         return (
             <div className="playerMainWidget">
-                Add Players
-                <form>
-                    <label>
-                        One Name Per Line
-                        <textarea value={this.state.inputText} onChange={(e) => this.onInputTextChanged(e)} rows={5} />
-                    </label>
-                    <div>
-                        <button onClick={(e) => this.onAddAllExactMatches(e)}>Add All Exact Matches</button>
-                    </div>
-                    {this.getPlayerMatches()}
-                </form>
+                <h3>
+                    Add Players
+                </h3>
+                <label>
+                    One Name Per Line
+                    <textarea value={this.state.inputText} onChange={(e) => this.onInputTextChanged(e)} rows={5} />
+                </label>
+                <div>
+                    <button onClick={(e) => this.onAddAllExactMatches(e)}>Add All Exact Matches</button>
+                </div>
+                {this.getPlayerMatches()}
             </div>
         )
     }
