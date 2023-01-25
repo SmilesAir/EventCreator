@@ -56,6 +56,14 @@ textarea {
             background-color: rgba(43, 46, 226, 0.507);
             margin: 5px;
 
+            select {
+                font-size: 1.25em;
+            }
+
+            optgroup {
+                font-size: 1.25em;
+            }
+
             .teamsWidget {
                 h3 {
                     cursor: pointer;
@@ -103,6 +111,17 @@ textarea {
 
                         .teams {
                             .team {
+                                display: flex;
+                                flex-direction: row;
+                            }
+                        }
+
+                        .judgeWidget {
+                            display: flex;
+                            flex-direction: row;
+                            justify-content: space-between;
+
+                            .judge {
                                 display: flex;
                                 flex-direction: row;
                             }

@@ -2,6 +2,9 @@
 
 let urls = {
     GET_PLAYER_DATA: "https://tkhmiv70u9.execute-api.us-west-2.amazonaws.com/development/getAllPlayers",
+    GET_POINTS_MANIFEST: "https://kvq5a3et4b.execute-api.us-west-2.amazonaws.com/production/getManifest",
+    GET_EVENT_DATA: "https://wyach4oti8.execute-api.us-west-2.amazonaws.com/production/getAllEvents",
+    GET_POINTS_DATA: "https://kvq5a3et4b.execute-api.us-west-2.amazonaws.com/production/downloadPointsData/<key>",
     ADD_PLAYER: "https://tkhmiv70u9.execute-api.us-west-2.amazonaws.com/development/addPlayer/<firstName>/lastName/<lastName>"
 }
 

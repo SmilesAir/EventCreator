@@ -41,9 +41,21 @@ module.exports.downloadPlayerAndEventData = function() {
             MainStore.cachedFullNames.push(playerData.firstName + " " + playerData.lastName)
         }
 
-        console.log(data)
     }).catch((error) => {
         console.error(`Failed to download Player data: ${error}`)
+    }).then(() => {
+        return Common.fetchEx("GET_EVENT_DATA", {}, {}, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        }).then((data) => {
+            MainStore.eventSummaryData = data.allEventSummaryData
+
+            console.log("GET_EVENT_DATA", data.allEventSummaryData)
+        }).catch((error) => {
+            console.error(`Failed to download Event data: ${error}`)
+        })
     })
 }
 
@@ -61,8 +73,6 @@ module.exports.loadFromLocalStorage = function() {
     MainStore.eventData = JSON.parse(localStorage.getItem("eventData") || undefined)
 
     Common.updateCachedRegisteredFullNames()
-
-    console.log(MainStore.eventData, MainStore.cachedRegisteredFullNames)
 }
 
 module.exports.updateCachedRegisteredFullNames = function() {
@@ -167,4 +177,71 @@ module.exports.getSortedJudgeKeyArray = function(poolData) {
     })
 
     return judges.map((data) => data.judgeKey)
+}
+
+module.exports.poolDataContainsCompetitor = function(poolData, competitorKey) {
+    for (let teamData of poolData.teamData) {
+        if (teamData.players.find((key) => key === competitorKey) !== undefined) {
+            return true
+        }
+    }
+
+    return false
+}
+
+module.exports.poolDataContainsJudge = function(poolData, judgeKey) {
+    return poolData.judges[judgeKey] !== undefined
+}
+
+module.exports.getMissingDivisionName = function() {
+    if (MainStore.eventData === undefined) {
+        return undefined
+    }
+
+    for (let divisionName of Common.divisionNames) {
+        if (MainStore.eventData.eventData.divisionData[divisionName] === undefined) {
+            return divisionName
+        }
+    }
+
+    return undefined
+}
+
+module.exports.getMissingRoundName = function(divisionName) {
+    if (MainStore.eventData === undefined) {
+        return undefined
+    }
+
+    let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+
+    for (let roundName of Common.roundNames) {
+        if (divisionData.roundData[roundName] === undefined) {
+            return roundName
+        }
+    }
+
+    return undefined
+}
+
+module.exports.divisionHasPools = function(divisionName) {
+    let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+    if (divisionData && divisionData.roundData) {
+        for (let roundName in divisionData.roundData) {
+            if (Common.roundHasPools(divisionName, roundName)) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+
+module.exports.roundHasPools = function(divisionName, roundName) {
+    let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+    let roundData = divisionData.roundData[roundName]
+    if (roundData && roundData.poolNames.length > 0) {
+        return true
+    }
+
+    return false
 }

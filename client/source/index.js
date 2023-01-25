@@ -5,6 +5,7 @@ const ReactDOM = require("react-dom")
 const MobxReact = require("mobx-react")
 const Fuzzysort = require("fuzzysort")
 const ReactSelect = require("react-select").default
+const { runInAction } = require("mobx")
 
 const MainStore = require("mainStore.js")
 const Common = require("common.js")
@@ -26,6 +27,7 @@ require("index.less")
         return (
             <div>
                 <button onClick={() => Common.saveToLocalStorage()}>Save</button>
+                <a href="https://forms.gle/gw65dM2d1PLK2jqD9" target="_blank" rel="noreferrer">Create New Event</a>
                 <EventWidget />
                 <div className="bodyContainer">
                     <PlayersSideWidget />
@@ -44,43 +46,39 @@ require("index.less")
         super()
     }
 
-    onSelectEventChanged(e) {
-        MainStore.selectedEventKey = e.target.value
-    }
-
-    onEventNameChanged(e) {
-        MainStore.eventData.eventName = e.target.value
-        Common.onEventDataChanged()
+    onSelectEventChanged(selected) {
+        MainStore.selectedEventKey = selected.value
     }
 
     render() {
-        if (MainStore.eventDirectory === undefined) {
-            return <h1>No Event Directory</h1>
+        if (MainStore.eventSummaryData === undefined) {
+            return <h1>No Event Summary Data</h1>
         }
 
-        let eventKeys = []
-        for (let eventKey in MainStore.eventDirectory) {
-            eventKeys.push(eventKey)
+        let selectedEventValue = null
+        let eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey]
+        if (eventSummaryData !== undefined) {
+            selectedEventValue = {
+                value: eventSummaryData.key,
+                label: eventSummaryData.eventName
+            }
         }
 
-        let eventOptions = eventKeys.map((eventKey, i) => {
-            return <option key={i} value={i}>{MainStore.eventDirectory[eventKey].eventName}</option>
-        })
+        let eventSummaryOptions = []
+        for (let eventKey in MainStore.eventSummaryData) {
+            let data = MainStore.eventSummaryData[eventKey]
+            eventSummaryOptions.push({
+                value: eventKey,
+                label: data.eventName
+            })
+        }
+
         return (
             <div>
                 <form>
                     <label>
                         {"Select Event: "}
-                        <select value={MainStore.selectedEventKey} onChange={(e) => this.onSelectEventChanged(e)}>
-                            {eventOptions}
-                        </select>
-                    </label>
-                    <label>
-                        {"Event Name: "}
-                        <input type="text" value={MainStore.eventData && MainStore.eventData.eventName || "No Event"} onChange={(e) => this.onEventNameChanged(e)} />
-                    </label>
-                    <label>
-                        Event Id: {MainStore.eventData && MainStore.eventData.eventKey || "No Event"}
+                        <ReactSelect value={selectedEventValue} options={eventSummaryOptions} onChange={(e) => this.onSelectEventChanged(e)} />
                     </label>
                     <button onClick={() => Common.createNewEventData()} disabled={MainStore.eventData !== undefined}>Create New Event Data</button>
                 </form>
@@ -95,9 +93,10 @@ require("index.less")
     }
 
     onAddDivision() {
-        MainStore.eventData.eventData.divisionData["Open Pairs"] = {
-            name: "Open Pairs",
-            headJudge: "123-123",
+        let divisionName = Common.getMissingDivisionName()
+        MainStore.eventData.eventData.divisionData[divisionName] = {
+            name: divisionName,
+            headJudge: undefined,
             directors: [],
             roundData: {}
         }
@@ -123,7 +122,7 @@ require("index.less")
     render() {
         return (
             <div className="divisionListWidget">
-                <button className="addDivisionButton" onClick={(e) => this.onAddDivision(e)}>+</button>
+                <button className="addDivisionButton" disabled={Common.getMissingDivisionName() === undefined} onClick={(e) => this.onAddDivision(e)}>Add Division</button>
                 Divisions
                 {this.getDivisionWidgets()}
             </div>
@@ -132,26 +131,32 @@ require("index.less")
 }
 
 @MobxReact.observer class DivisionWidget extends React.Component {
-    constructor() {
-        super()
+    constructor(props) {
+        super(props)
 
         this.state = {
-            isTeamWidgetEnabled: true,
+            isTeamWidgetEnabled: false,
             inputTeamsText: "",
             parsedTeamWidgets: undefined,
-            parsedTeamState: []
+            parsedTeamState: [],
+            divisionName: this.props.divisionData && this.props.divisionData.name
         }
     }
 
-    onAddRound(e) {
-        this.props.divisionData.roundData["Finals"] = {
-            name: "Finals",
+    onAddRound() {
+        let roundName = Common.getMissingRoundName(this.state.divisionName)
+        this.props.divisionData.roundData[roundName] = {
+            name: roundName,
             lengthSeconds: 180,
             poolNames: []
         }
     }
 
     getRoundWidgets() {
+        if (this.props.divisionData === undefined) {
+            return null
+        }
+
         let roundWidgets = []
         for (let roundName in this.props.divisionData.roundData) {
             let roundData = this.props.divisionData.roundData[roundName]
@@ -294,12 +299,48 @@ require("index.less")
         }
     }
 
+    onDivisionNameChanged(e) {
+        if (this.state.divisionName !== e.target.value) {
+            runInAction(() => {
+                let newDivisionData = Object.assign({}, MainStore.eventData.eventData.divisionData)
+                newDivisionData[e.target.value] = Object.assign({}, newDivisionData[this.state.divisionName])
+                newDivisionData[e.target.value].name = e.target.value
+                delete newDivisionData[this.state.divisionName]
+                MainStore.eventData.eventData.divisionData = newDivisionData
+            })
+        }
+    }
+
+    getDivisionNameWidget() {
+        let options = []
+        for (let divisionName of Common.divisionNames) {
+            if (divisionName === this.state.divisionName || MainStore.eventData.eventData.divisionData[divisionName] === undefined) {
+                options.push(
+                    <option key={divisionName} value={divisionName}>{divisionName}</option>
+                )
+            }
+        }
+
+        return (
+            <select value={this.state.divisionName} disabled={Common.divisionHasPools(this.state.divisionName)} onChange={(e) => this.onDivisionNameChanged(e)}>
+                <optgroup>
+                    {options}
+                </optgroup>
+            </select>
+        )
+    }
+
+    onDeleteDivision() {
+        delete MainStore.eventData.eventData.divisionData[this.state.divisionName]
+    }
+
     render() {
         return (
             <div className="divisionWidget">
-                {this.props.divisionData.name}
+                {this.getDivisionNameWidget()}
+                <button onClick={() => this.onDeleteDivision()}>Delete Division</button>
                 <div className="roundsContainer">
-                    <button className="addRoundButton" onClick={(e) => this.onAddRound(e)}>+</button>
+                    <button className="addRoundButton" disabled={Common.getMissingRoundName(this.state.divisionName) === undefined} onClick={(e) => this.onAddRound(e)}>Add Round</button>
                     {this.getTeamsWidget()}
                     Rounds
                     {this.getRoundWidgets()}
@@ -310,27 +351,93 @@ require("index.less")
 }
 
 @MobxReact.observer class RoundWidget extends React.Component {
-    constructor() {
-        super()
+    constructor(props) {
+        super(props)
+
+        this.state = {
+            roundName: this.props.roundData && this.props.roundData.name,
+            routineLength: this.props.roundData.lengthSeconds
+        }
     }
 
-    onAddPool(e) {
-        this.props.roundData.poolNames.push("A")
+    onAddPool() {
+        this.props.roundData.poolNames.push(String.fromCharCode("A".charCodeAt(0) + this.props.roundData.poolNames.length))
     }
 
     getPoolWidgets() {
         return this.props.roundData.poolNames.map((name, i) => {
             let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionName, this.props.roundData.name, name)
-            return <PoolWidget key={i} divisionName={this.props.divisionName} poolName={name} poolKey={poolKey} />
+            return <PoolWidget key={i} divisionName={this.props.divisionName} roundData={this.props.roundData} poolName={name} poolKey={poolKey} />
         })
+    }
+
+    onRoundNameChanged(e) {
+        if (this.state.roundName !== e.target.value) {
+            runInAction(() => {
+                let newDivisionData = Object.assign({}, MainStore.eventData.eventData.divisionData[this.props.divisionName])
+                newDivisionData.roundData[e.target.value] = Object.assign({}, newDivisionData.roundData[this.state.roundName])
+                newDivisionData.roundData[e.target.value].name = e.target.value
+                delete newDivisionData.roundData[this.state.roundName]
+                MainStore.eventData.eventData.divisionData[this.props.divisionName] = newDivisionData
+
+                this.state.roundName = e.target.value
+                this.setState(this.state)
+            })
+        }
+    }
+
+    getRoundNameWidget() {
+        let options = []
+        for (let roundName of Common.roundNames) {
+            if (roundName === this.state.roundName || MainStore.eventData.eventData.divisionData[this.props.divisionName].roundData[roundName] === undefined) {
+                options.push(
+                    <option key={roundName} value={roundName}>{roundName}</option>
+                )
+            }
+        }
+
+        return (
+            <select value={this.state.roundName} disabled={Common.roundHasPools(this.props.divisionName, this.state.roundName)} onChange={(e) => this.onRoundNameChanged(e)}>
+                <optgroup>
+                    {options}
+                </optgroup>
+            </select>
+        )
+    }
+
+    onRoutineLengthChanged(e) {
+        this.state.routineLength = e.target.value
+        this.setState(this.state)
+
+        this.props.roundData.lengthSeconds = parseInt(e.target.value, 10)
+    }
+
+    getRoutineLengthWidget() {
+        let options = [
+            <option key={2} value={120}>2:00</option>,
+            <option key={3} value={180}>3:00</option>,
+            <option key={4} value={240}>4:00</option>,
+            <option key={5} value={300}>5:00</option>
+        ]
+        return (
+            <select value={this.state.routineLength} onChange={(e) => this.onRoutineLengthChanged(e)}>
+                {options}
+            </select>
+        )
+    }
+
+    onDeleteRound() {
+        delete MainStore.eventData.eventData.divisionData[this.props.divisionName].roundData[this.props.roundData.name]
     }
 
     render() {
         return (
             <div className="roundWidget">
-                {this.props.roundData.name}
+                {this.getRoundNameWidget()}
+                {this.getRoutineLengthWidget()}
+                <button onClick={() => this.onDeleteRound()}>Delete Round</button>
                 <div className="roundsContainer">
-                    <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>+</button>
+                    <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>Add Pool</button>
                     Pools
                     {this.getPoolWidgets()}
                 </div>
@@ -356,13 +463,29 @@ require("index.less")
     }
 
     getAddTeamOptions() {
+        let divisionData = MainStore.eventData.eventData.divisionData[this.props.divisionName]
+        if (divisionData === undefined || divisionData.teams === undefined) {
+            return []
+        }
+
+        let poolDatas = this.props.roundData.poolNames.map((poolName) => {
+            return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, this.props.divisionName, this.props.roundData.name, poolName)]
+        }).filter((item) => item !== undefined)
+
         let options = []
-        for (let team of MainStore.eventData.eventData.divisionData[this.props.divisionName].teams) {
-            let teamExists = this.poolData.teamData.find((teamData) => {
-                return teamData.players.find((playerKey) => {
-                    return team[0] === playerKey
+        for (let team of divisionData.teams) {
+            let teamExists = false
+            for (let poolData of poolDatas) {
+                teamExists = poolData.teamData.find((teamData) => {
+                    return teamData.players.find((playerKey) => {
+                        return team[0] === playerKey
+                    }) !== undefined
                 }) !== undefined
-            }) !== undefined
+
+                if (teamExists) {
+                    break
+                }
+            }
 
             if (!teamExists) {
                 options.push({
@@ -382,17 +505,32 @@ require("index.less")
         })
     }
 
+    onRemoveNewTeam(index) {
+        this.poolData.teamData.splice(index, 1)
+    }
+
+    moveTeam(index, dir) {
+        let newIndex = index + dir
+        if (newIndex < 0 || newIndex >= this.poolData.teamData.length) {
+            return
+        }
+
+        let temp = this.poolData.teamData[newIndex]
+        this.poolData.teamData[newIndex] = this.poolData.teamData[index]
+        this.poolData.teamData[index] = temp
+    }
+
     getTeamsWidget() {
         let widgets = this.poolData.teamData.map((teamData, index) => {
             return (
                 <div key={Math.random()} className="team">
-                    <button>X</button>
+                    <button onClick={() => this.onRemoveNewTeam(index)}>X</button>
                     {index + 1}.
                     <div>
                         {Common.getPlayerNamesString(teamData.players)}
                     </div>
-                    <button>^</button>
-                    <button>v</button>
+                    <button onClick={() => this.moveTeam(index, 1)}>^</button>
+                    <button onClick={() => this.moveTeam(index, -1)}>v</button>
                 </div>
             )
         })
@@ -403,10 +541,89 @@ require("index.less")
         )
     }
 
+    onAddJudge(playerKey, category) {
+        this.poolData.judges[playerKey] = category
+    }
+
+    getJudgeSelectWidget() {
+        let judgeWidgets = []
+        let filteredPlayerKeys = []
+        for (let playerKey in MainStore.eventData.eventData.playerData) {
+            if (!Common.poolDataContainsCompetitor(this.poolData, playerKey) && !Common.poolDataContainsJudge(this.poolData, playerKey)) {
+                filteredPlayerKeys.push(playerKey)
+            }
+        }
+
+        // sort filteredPlayerKeys
+
+        for (let playerKey of filteredPlayerKeys) {
+            let playerData = MainStore.playerData[playerKey]
+            judgeWidgets.push(
+                <div key={playerKey} className="judge">
+                    <button onClick={() => this.onAddJudge(playerKey, "Diff")}>Diff</button>
+                    <button onClick={() => this.onAddJudge(playerKey, "Variety")}>Variety</button>
+                    <button onClick={() => this.onAddJudge(playerKey, "ExAi")}>ExAi</button>
+                    <div>
+                        {Common.getPlayerNameString(playerKey)}
+                    </div>
+                    <div>
+                        {playerData.country || "UKN"}
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div>
+                <div>
+                    Select Judges
+                </div>
+                <div>
+                    {judgeWidgets}
+                </div>
+            </div>
+        )
+    }
+
+    removeJudge(judgeKey) {
+        delete this.poolData.judges[judgeKey]
+    }
+
+    getJudgesWidget() {
+        let judgeKeys = Common.getSortedJudgeKeyArray(this.poolData)
+        let judgeWidgets = judgeKeys.map((key) => {
+            let category = this.poolData.judges[key]
+            return (
+                <div key={key}>
+                    <button onClick={() => this.removeJudge(key)}>X</button>
+                    {`${category}: ${Common.getPlayerNameString(key)}`}
+                </div>
+            )
+        })
+        return (
+            <div>
+                <div>
+                    Judges
+                </div>
+                <div>
+                    {judgeWidgets}
+                </div>
+            </div>
+        )
+    }
+
+    onDeletePool() {
+        let index = this.props.roundData.poolNames.findIndex((name) => name === this.props.poolName)
+        this.props.roundData.poolNames.splice(index, 1)
+
+        delete MainStore.eventData.eventData.poolMap[this.props.poolKey]
+    }
+
     render() {
         return (
             <div className="poolWidget">
                 {`Pool ${this.props.poolName}`}
+                <button onClick={() => this.onDeletePool()}>Delete Pool</button>
                 <h3>
                     Teams
                 </h3>
@@ -415,8 +632,9 @@ require("index.less")
                     <ReactSelect value={null} options={this.getAddTeamOptions()} onChange={(e) => this.onAddTeamSelected(e)} />
                     {this.getTeamsWidget()}
                 </div>
-                <div>
-                    Judges
+                <div className="judgeWidget">
+                    {this.getJudgeSelectWidget()}
+                    {this.getJudgesWidget()}
                 </div>
             </div>
         )
