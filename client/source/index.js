@@ -18,7 +18,7 @@ require("index.less")
     constructor() {
         super()
 
-        Common.downloadPlayerAndEventData().then(() => {
+        Common.downloadPlayerAndEventSummaryData().then(() => {
             Common.loadFromLocalStorage()
         })
     }
@@ -26,7 +26,11 @@ require("index.less")
     render() {
         return (
             <div>
+                <button onClick={() => Common.createNewEventData()}>New</button>
                 <button onClick={() => Common.saveToLocalStorage()}>Save</button>
+                <button onClick={() => Common.uploadEventData()}>Upload</button>
+                <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
+                <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
                 <a href="https://forms.gle/gw65dM2d1PLK2jqD9" target="_blank" rel="noreferrer">Create New Event</a>
                 <EventWidget />
                 <div className="bodyContainer">
@@ -48,6 +52,9 @@ require("index.less")
 
     onSelectEventChanged(selected) {
         MainStore.selectedEventKey = selected.value
+
+        console.log(selected)
+        MainStore.eventData.eventName = selected.label
     }
 
     render() {
@@ -80,7 +87,6 @@ require("index.less")
                         {"Select Event: "}
                         <ReactSelect value={selectedEventValue} options={eventSummaryOptions} onChange={(e) => this.onSelectEventChanged(e)} />
                     </label>
-                    <button onClick={() => Common.createNewEventData()} disabled={MainStore.eventData !== undefined}>Create New Event Data</button>
                 </form>
             </div>
         )
@@ -123,7 +129,9 @@ require("index.less")
         return (
             <div className="divisionListWidget">
                 <button className="addDivisionButton" disabled={Common.getMissingDivisionName() === undefined} onClick={(e) => this.onAddDivision(e)}>Add Division</button>
-                Divisions
+                <h3>
+                    Divisions
+                </h3>
                 {this.getDivisionWidgets()}
             </div>
         )
@@ -254,7 +262,7 @@ require("index.less")
             return (
                 <div key={Math.random()}>
                     <button onClick={() => this.onRemoveNewTeam(playerKeys)}>X</button>
-                    {Common.getPlayerNamesString(playerKeys)}
+                    {`${Common.getTeamRankingPointsByDivision(playerKeys, this.props.divisionData.name)} ${Common.getPlayerNamesString(playerKeys)}`}
                 </div>
             )
         })
@@ -265,7 +273,7 @@ require("index.less")
             return (
                 <div className="teamsWidget">
                     <h3 onClick={() => this.onTeamsWidgetClicked()}>
-                        Teams
+                        Edit Teams
                     </h3>
                 </div>
             )
@@ -273,7 +281,7 @@ require("index.less")
             return (
                 <div className="teamsWidget enabled">
                     <h3 onClick={() => this.onTeamsWidgetClicked()}>
-                        Teams
+                        Edit Teams
                     </h3>
                     <div className="top">
                         <div>
@@ -285,7 +293,7 @@ require("index.less")
                                 {this.getParsedTeamWidgets()}
                             </div>
                         </div>
-                        <div>
+                        <div className="allTeamsWidget">
                             <h3>
                                 All Teams
                             </h3>
@@ -525,10 +533,7 @@ require("index.less")
             return (
                 <div key={Math.random()} className="team">
                     <button onClick={() => this.onRemoveNewTeam(index)}>X</button>
-                    {index + 1}.
-                    <div>
-                        {Common.getPlayerNamesString(teamData.players)}
-                    </div>
+                    {`${index + 1}. ${Common.getPlayerNamesString(teamData.players)}`}
                     <button onClick={() => this.moveTeam(index, 1)}>^</button>
                     <button onClick={() => this.moveTeam(index, -1)}>v</button>
                 </div>
@@ -554,20 +559,28 @@ require("index.less")
             }
         }
 
-        // sort filteredPlayerKeys
+        filteredPlayerKeys.sort((a, b) => {
+            return Common.getPlayerRankingPointsByDivision(b) - Common.getPlayerRankingPointsByDivision(a)
+        })
 
         for (let playerKey of filteredPlayerKeys) {
             let playerData = MainStore.playerData[playerKey]
+            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, this.props.divisionName, this.props.roundData.name, this.props.poolName)
+            let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined
+            let cn = `judge ${isPlayingInOtherPool ? "playingInOtherPool" : ""}`
             judgeWidgets.push(
-                <div key={playerKey} className="judge">
+                <div key={playerKey} className={cn} title={title}>
                     <button onClick={() => this.onAddJudge(playerKey, "Diff")}>Diff</button>
                     <button onClick={() => this.onAddJudge(playerKey, "Variety")}>Variety</button>
                     <button onClick={() => this.onAddJudge(playerKey, "ExAi")}>ExAi</button>
-                    <div>
+                    <div className="name">
                         {Common.getPlayerNameString(playerKey)}
                     </div>
-                    <div>
+                    <div className="country">
                         {playerData.country || "UKN"}
+                    </div>
+                    <div className="count">
+                        {Common.getPlayerJudgedCount(playerKey)}
                     </div>
                 </div>
             )
@@ -593,10 +606,13 @@ require("index.less")
         let judgeKeys = Common.getSortedJudgeKeyArray(this.poolData)
         let judgeWidgets = judgeKeys.map((key) => {
             let category = this.poolData.judges[key]
+            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, this.props.divisionName, this.props.roundData.name, this.props.poolName)
+            let cn = isPlayingInOtherPool ? "playingInOtherPool" : ""
+            let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined
             return (
-                <div key={key}>
+                <div key={key} className={cn} title={title}>
                     <button onClick={() => this.removeJudge(key)}>X</button>
-                    {`${category}: ${Common.getPlayerNameString(key)}`}
+                    {`${category}: ${Common.getPlayerNameString(key)} (${Common.getPlayerJudgedCount(key)})`}
                 </div>
             )
         })
@@ -622,12 +638,12 @@ require("index.less")
     render() {
         return (
             <div className="poolWidget">
-                {`Pool ${this.props.poolName}`}
+                {`${this.props.divisionName} ${this.props.roundData.name} ${this.props.poolName}`}
                 <button onClick={() => this.onDeletePool()}>Delete Pool</button>
                 <h3>
                     Teams
                 </h3>
-                <div>
+                <div className="addTeamWidget">
                     Add Team
                     <ReactSelect value={null} options={this.getAddTeamOptions()} onChange={(e) => this.onAddTeamSelected(e)} />
                     {this.getTeamsWidget()}

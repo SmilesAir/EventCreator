@@ -26,7 +26,7 @@ module.exports = @MobxReact.observer class PlayersSideWidget extends React.Compo
             if (playerData !== undefined) {
                 playerWidgets.push(
                     <div key={playerKey}>
-                        {`${playerWidgets.length + 1}. ${playerData.firstName + " " + playerData.lastName}`}
+                        {`${playerWidgets.length + 1}. ${playerData.firstName + " " + playerData.lastName} ${Common.getPlayerRankingPointsByDivision(playerKey, "Open Pairs")}`}
                     </div>
                 )
             }

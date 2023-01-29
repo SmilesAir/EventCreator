@@ -18,14 +18,6 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
             inputText: "",
             inputPlayerMatches: []
         }
-
-        setTimeout(() => {
-            this.onInputTextChanged({
-                target: {
-                    value: "Ryan Young\nEmma Kahle\nJames"
-                }
-            })
-        }, 1000)
     }
 
     onInputTextChanged(e) {
@@ -231,7 +223,7 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
                     Add Players
                 </h3>
                 <label>
-                    One Name Per Line
+                    One Name Per Line. Example: Ryan Young
                     <textarea value={this.state.inputText} onChange={(e) => this.onInputTextChanged(e)} rows={5} />
                 </label>
                 <div>

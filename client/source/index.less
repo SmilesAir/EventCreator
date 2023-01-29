@@ -20,32 +20,47 @@ textarea {
     display: flex;
     flex-direction: row;
 
-    background-color: antiquewhite;
-
     .playersSideWidget {
         position: relative;
         width: 10em;
-
-        background-color: rgba(255, 238, 0, 0.473);
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
 
         .addPlayersButton {
             position: absolute;
             right: 0;
+            font-size: 1.5em;
+            font-weight: bold;
         }
     }
 
     .mainWidget {
         flex-grow: 5;
-        background-color: rgba(155, 145, 241, 0.452);
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
     }
 
     .playerMainWidget {
-        background-color: rgba(226, 43, 43, 0.452);
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
     }
 
     .divisionListWidget {
         position: relative;
-        background-color: rgba(43, 226, 73, 0.452);
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
 
         .addDivisionButton {
             position: absolute;
@@ -53,8 +68,11 @@ textarea {
         }
 
         .divisionWidget {
-            background-color: rgba(43, 46, 226, 0.507);
-            margin: 5px;
+            border: gray 2px solid;
+            border-radius: 5px;
+            background-color: beige;
+            margin: 2px;
+            padding: 2px;
 
             select {
                 font-size: 1.25em;
@@ -68,7 +86,11 @@ textarea {
                 h3 {
                     cursor: pointer;
                 }
-                background-color: azure;
+                border: gray 2px solid;
+                border-radius: 5px;
+                background-color:cornsilk;
+                margin: 2px;
+                padding: 2px;
 
                 .top {
                     display: flex;
@@ -79,9 +101,16 @@ textarea {
                         flex-direction: row;
                     }
 
-                    .allTeams {
-                        display: flex;
-                        flex-direction: column;
+                    .allTeamsWidget {
+                        border: gray 2px solid;
+                        border-radius: 5px;
+                        margin: 2px;
+                        padding: 2px;
+
+                        .allTeams {
+                            display: flex;
+                            flex-direction: column;
+                        }
                     }
                 }
             }
@@ -96,8 +125,11 @@ textarea {
 
                 .roundWidget {
                     position: relative;
-                    background-color: gold;
-                    margin: 5px;
+                    border: gray 2px solid;
+                    border-radius: 5px;
+                    background-color:cornsilk;
+                    margin: 2px;
+                    padding: 2px;
 
                     .addPoolButton {
                         position: absolute;
@@ -106,13 +138,26 @@ textarea {
 
                     .poolWidget {
                         position: relative;
-                        background-color: rgb(63, 204, 209);
-                        margin: 5px;
+                        border: gray 2px solid;
+                        border-radius: 5px;
+                        background-color:ghostwhite;
+                        margin: 2px;
+                        padding: 2px;
 
-                        .teams {
-                            .team {
-                                display: flex;
-                                flex-direction: row;
+                        .addTeamWidget {
+                            border: gray 2px solid;
+                            border-radius: 5px;
+                            margin: 2px;
+                            padding: 2px;
+
+                            .teams {
+                                margin-top: .5em;
+
+                                .team {
+                                    display: flex;
+                                    flex-direction: row;
+                                    font-size: 1.25em;
+                                }
                             }
                         }
 
@@ -120,10 +165,29 @@ textarea {
                             display: flex;
                             flex-direction: row;
                             justify-content: space-between;
+                            border: gray 2px solid;
+                            border-radius: 5px;
+                            margin: 2px;
+                            padding: 2px;
+                            margin-top: .5em;
 
                             .judge {
                                 display: flex;
                                 flex-direction: row;
+
+                                .name {
+                                    margin-left: .5em;
+                                    width: 12em;
+                                }
+
+                                .country {
+                                    width: 3em;
+                                }
+                            }
+
+                            .playingInOtherPool {
+                                background-color: bisque;
+                                cursor: help;
                             }
                         }
                     }
