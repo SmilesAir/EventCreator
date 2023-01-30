@@ -661,3 +661,5 @@ ReactDOM.render(
     <Main />,
     document.getElementById("mount")
 )
+
+module.exports = Main
