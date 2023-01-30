@@ -14,7 +14,7 @@ const PlayersSideWidget = require("playersSideWidget.js")
 
 require("index.less")
 
-@MobxReact.observer class Main extends React.Component {
+@MobxReact.observer class EventCreator extends React.Component {
     constructor() {
         super()
 
@@ -658,8 +658,8 @@ require("index.less")
 }
 
 ReactDOM.render(
-    <Main />,
+    <EventCreator />,
     document.getElementById("mount")
 )
 
-module.exports = Main
+module.exports = EventCreator
