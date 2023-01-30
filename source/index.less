@@ -1,0 +1,198 @@
+
+body {
+    overscroll-behavior: contain;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+textarea {
+    width: 100%;
+}
+
+.none {
+    display: none;
+}
+
+.bodyContainer {
+    display: flex;
+    flex-direction: row;
+
+    .playersSideWidget {
+        position: relative;
+        width: 10em;
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
+
+        .addPlayersButton {
+            position: absolute;
+            right: 0;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    }
+
+    .mainWidget {
+        flex-grow: 5;
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
+    }
+
+    .playerMainWidget {
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
+    }
+
+    .divisionListWidget {
+        position: relative;
+        border: gray 2px solid;
+        border-radius: 5px;
+        background-color: azure;
+        margin: 2px;
+        padding: 2px;
+
+        .addDivisionButton {
+            position: absolute;
+            right: 0;
+        }
+
+        .divisionWidget {
+            border: gray 2px solid;
+            border-radius: 5px;
+            background-color: beige;
+            margin: 2px;
+            padding: 2px;
+
+            select {
+                font-size: 1.25em;
+            }
+
+            optgroup {
+                font-size: 1.25em;
+            }
+
+            .teamsWidget {
+                h3 {
+                    cursor: pointer;
+                }
+                border: gray 2px solid;
+                border-radius: 5px;
+                background-color:cornsilk;
+                margin: 2px;
+                padding: 2px;
+
+                .top {
+                    display: flex;
+                    flex-direction: row;
+
+                    .team {
+                        display: flex;
+                        flex-direction: row;
+                    }
+
+                    .allTeamsWidget {
+                        border: gray 2px solid;
+                        border-radius: 5px;
+                        margin: 2px;
+                        padding: 2px;
+
+                        .allTeams {
+                            display: flex;
+                            flex-direction: column;
+                        }
+                    }
+                }
+            }
+
+            .roundsContainer {
+                position: relative;
+
+                .addRoundButton {
+                    position: absolute;
+                    right: 0;
+                }
+
+                .roundWidget {
+                    position: relative;
+                    border: gray 2px solid;
+                    border-radius: 5px;
+                    background-color:cornsilk;
+                    margin: 2px;
+                    padding: 2px;
+
+                    .addPoolButton {
+                        position: absolute;
+                        right: 0;
+                    }
+
+                    .poolWidget {
+                        position: relative;
+                        border: gray 2px solid;
+                        border-radius: 5px;
+                        background-color:ghostwhite;
+                        margin: 2px;
+                        padding: 2px;
+
+                        .addTeamWidget {
+                            border: gray 2px solid;
+                            border-radius: 5px;
+                            margin: 2px;
+                            padding: 2px;
+
+                            .teams {
+                                margin-top: .5em;
+
+                                .team {
+                                    display: flex;
+                                    flex-direction: row;
+                                    font-size: 1.25em;
+                                }
+                            }
+                        }
+
+                        .judgeWidget {
+                            display: flex;
+                            flex-direction: row;
+                            justify-content: space-between;
+                            border: gray 2px solid;
+                            border-radius: 5px;
+                            margin: 2px;
+                            padding: 2px;
+                            margin-top: .5em;
+
+                            .judge {
+                                display: flex;
+                                flex-direction: row;
+
+                                .name {
+                                    margin-left: .5em;
+                                    width: 12em;
+                                }
+
+                                .country {
+                                    width: 3em;
+                                }
+                            }
+
+                            .playingInOtherPool {
+                                background-color: bisque;
+                                cursor: help;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
