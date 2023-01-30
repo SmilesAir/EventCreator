@@ -10,7 +10,7 @@ const Common = require("common.js")
 
 require("playersMainWidget.less")
 
-module.exports = @MobxReact.observer class PlayerMainWidget extends React.Component {
+module.exports = MobxReact.observer(class PlayerMainWidget extends React.Component {
     constructor() {
         super()
 
@@ -233,9 +233,9 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class NewPlayerWidget extends React.Component {
+const NewPlayerWidget = MobxReact.observer(class NewPlayerWidget extends React.Component {
     constructor() {
         super()
 
@@ -304,4 +304,4 @@ module.exports = @MobxReact.observer class PlayerMainWidget extends React.Compon
             )
         }
     }
-}
+})

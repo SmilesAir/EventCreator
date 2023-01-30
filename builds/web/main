@@ -58139,8 +58139,6 @@ module.exports.buildUrl = function (key, pathParams, queryParams) {
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-var _dec, _class, _dec2, _class2, _dec3, _class3, _dec4, _class4, _dec5, _class5, _dec6, _class6;
-
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -58190,15 +58188,15 @@ var PlayersSideWidget = __webpack_require__(/*! playersSideWidget.js */ "./sourc
 
 __webpack_require__(/*! index.less */ "./source/index.less");
 
-var Main = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function (_React$Component) {
-  _inherits(Main, _React$Component);
+var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
+  _inherits(EventCreator, _React$Component);
 
-  var _super = _createSuper(Main);
+  var _super = _createSuper(EventCreator);
 
-  function Main() {
+  function EventCreator() {
     var _this;
 
-    _classCallCheck(this, Main);
+    _classCallCheck(this, EventCreator);
 
     _this = _super.call(this);
     Common.downloadPlayerAndEventSummaryData().then(function () {
@@ -58207,7 +58205,7 @@ var Main = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function (_Rea
     return _this;
   }
 
-  _createClass(Main, [{
+  _createClass(EventCreator, [{
     key: "render",
     value: function render() {
       return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
@@ -58242,9 +58240,9 @@ var Main = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function (_Rea
     }
   }]);
 
-  return Main;
-}(React.Component)) || _class);
-var EventWidget = (_dec2 = MobxReact.observer, _dec2(_class2 = /*#__PURE__*/function (_React$Component2) {
+  return EventCreator;
+}(React.Component));
+var EventWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) {
   _inherits(EventWidget, _React$Component2);
 
   var _super2 = _createSuper(EventWidget);
@@ -58302,8 +58300,8 @@ var EventWidget = (_dec2 = MobxReact.observer, _dec2(_class2 = /*#__PURE__*/func
   }]);
 
   return EventWidget;
-}(React.Component)) || _class2);
-var DivisionListWidget = (_dec3 = MobxReact.observer, _dec3(_class3 = /*#__PURE__*/function (_React$Component3) {
+}(React.Component));
+var DivisionListWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component3) {
   _inherits(DivisionListWidget, _React$Component3);
 
   var _super3 = _createSuper(DivisionListWidget);
@@ -58364,8 +58362,8 @@ var DivisionListWidget = (_dec3 = MobxReact.observer, _dec3(_class3 = /*#__PURE_
   }]);
 
   return DivisionListWidget;
-}(React.Component)) || _class3);
-var DivisionWidget = (_dec4 = MobxReact.observer, _dec4(_class4 = /*#__PURE__*/function (_React$Component4) {
+}(React.Component));
+var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component4) {
   _inherits(DivisionWidget, _React$Component4);
 
   var _super4 = _createSuper(DivisionWidget);
@@ -58700,8 +58698,8 @@ var DivisionWidget = (_dec4 = MobxReact.observer, _dec4(_class4 = /*#__PURE__*/f
   }]);
 
   return DivisionWidget;
-}(React.Component)) || _class4);
-var RoundWidget = (_dec5 = MobxReact.observer, _dec5(_class5 = /*#__PURE__*/function (_React$Component5) {
+}(React.Component));
+var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) {
   _inherits(RoundWidget, _React$Component5);
 
   var _super5 = _createSuper(RoundWidget);
@@ -58853,8 +58851,8 @@ var RoundWidget = (_dec5 = MobxReact.observer, _dec5(_class5 = /*#__PURE__*/func
   }]);
 
   return RoundWidget;
-}(React.Component)) || _class5);
-var PoolWidget = (_dec6 = MobxReact.observer, _dec6(_class6 = /*#__PURE__*/function (_React$Component6) {
+}(React.Component));
+var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   _inherits(PoolWidget, _React$Component6);
 
   var _super6 = _createSuper(PoolWidget);
@@ -59122,8 +59120,9 @@ var PoolWidget = (_dec6 = MobxReact.observer, _dec6(_class6 = /*#__PURE__*/funct
   }]);
 
   return PoolWidget;
-}(React.Component)) || _class6);
-ReactDOM.render( /*#__PURE__*/React.createElement(Main, null), document.getElementById("mount"));
+}(React.Component));
+ReactDOM.render( /*#__PURE__*/React.createElement(EventCreator, null), document.getElementById("mount"));
+module.exports = EventCreator;
 
 /***/ }),
 
@@ -59195,8 +59194,6 @@ module.exports = Mobx.observable({
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-var _dec, _class, _dec2, _class2;
-
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
 
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -59235,7 +59232,7 @@ var Common = __webpack_require__(/*! common.js */ "./source/common.js");
 
 __webpack_require__(/*! playersMainWidget.less */ "./source/playersMainWidget.less");
 
-module.exports = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function (_React$Component) {
+module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   _inherits(PlayerMainWidget, _React$Component);
 
   var _super = _createSuper(PlayerMainWidget);
@@ -59504,8 +59501,8 @@ module.exports = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function
   }]);
 
   return PlayerMainWidget;
-}(React.Component)) || _class);
-var NewPlayerWidget = (_dec2 = MobxReact.observer, _dec2(_class2 = /*#__PURE__*/function (_React$Component2) {
+}(React.Component));
+var NewPlayerWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) {
   _inherits(NewPlayerWidget, _React$Component2);
 
   var _super2 = _createSuper(NewPlayerWidget);
@@ -59600,7 +59597,7 @@ var NewPlayerWidget = (_dec2 = MobxReact.observer, _dec2(_class2 = /*#__PURE__*/
   }]);
 
   return NewPlayerWidget;
-}(React.Component)) || _class2);
+}(React.Component));
 
 /***/ }),
 
@@ -59646,8 +59643,6 @@ if(false) {}
 
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-var _dec, _class;
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -59676,7 +59671,7 @@ var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js")
 
 var Common = __webpack_require__(/*! common.js */ "./source/common.js");
 
-module.exports = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function (_React$Component) {
+module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   _inherits(PlayersSideWidget, _React$Component);
 
   var _super = _createSuper(PlayersSideWidget);
@@ -59730,7 +59725,7 @@ module.exports = (_dec = MobxReact.observer, _dec(_class = /*#__PURE__*/function
   }]);
 
   return PlayersSideWidget;
-}(React.Component)) || _class);
+}(React.Component));
 
 /***/ }),
 

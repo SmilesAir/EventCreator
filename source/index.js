@@ -14,7 +14,7 @@ const PlayersSideWidget = require("playersSideWidget.js")
 
 require("index.less")
 
-@MobxReact.observer class EventCreator extends React.Component {
+const EventCreator = MobxReact.observer(class EventCreator extends React.Component {
     constructor() {
         super()
 
@@ -43,9 +43,9 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class EventWidget extends React.Component {
+const EventWidget = MobxReact.observer(class EventWidget extends React.Component {
     constructor() {
         super()
     }
@@ -91,9 +91,9 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class DivisionListWidget extends React.Component {
+const DivisionListWidget = MobxReact.observer(class DivisionListWidget extends React.Component {
     constructor() {
         super()
     }
@@ -136,9 +136,9 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class DivisionWidget extends React.Component {
+const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Component {
     constructor(props) {
         super(props)
 
@@ -356,9 +356,9 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class RoundWidget extends React.Component {
+const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component {
     constructor(props) {
         super(props)
 
@@ -452,9 +452,9 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
-@MobxReact.observer class PoolWidget extends React.Component {
+const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     constructor(props) {
         super(props)
 
@@ -655,7 +655,7 @@ require("index.less")
             </div>
         )
     }
-}
+})
 
 ReactDOM.render(
     <EventCreator />,

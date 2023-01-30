@@ -6,7 +6,7 @@ const MobxReact = require("mobx-react")
 const MainStore = require("mainStore.js")
 const Common = require("common.js")
 
-module.exports = @MobxReact.observer class PlayersSideWidget extends React.Component {
+module.exports = MobxReact.observer(class PlayersSideWidget extends React.Component {
     constructor() {
         super()
     }
@@ -44,4 +44,4 @@ module.exports = @MobxReact.observer class PlayersSideWidget extends React.Compo
             </div>
         )
     }
-}
+})
