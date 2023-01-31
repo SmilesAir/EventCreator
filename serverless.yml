@@ -1,0 +1,18 @@
+# serverless.yml
+service: event-creator
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  region: us-west-2
+  stage: ${opt:stage, "development"}
+
+
+plugins:
+  - fullstack-serverless
+
+custom:
+  fullstack:
+    bucketName: deployed-bucket
+    distributionFolder: builds/web
+    indexDocument: index.html

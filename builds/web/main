@@ -58101,11 +58101,11 @@ var urls = {
 };
 
 module.exports.buildUrl = function (key, pathParams, queryParams) {
-  var path =  true ? "https://0uzw9x3t5g.execute-api.us-west-2.amazonaws.com" : undefined;
-  path += "/".concat("DEVELOPMENT".toLowerCase());
+  var path =  false ? undefined : "https://w0wkbj0dd9.execute-api.us-west-2.amazonaws.com";
+  path += "/".concat("PRODUCTION".toLowerCase());
   var pathReplaceData = {
     "path": path,
-    "stage": "DEVELOPMENT".toLowerCase()
+    "stage": "PRODUCTION".toLowerCase()
   };
   Object.assign(pathReplaceData, pathParams);
   var url = urls[key];
