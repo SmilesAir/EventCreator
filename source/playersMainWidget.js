@@ -39,6 +39,7 @@ module.exports = MobxReact.observer(class PlayerMainWidget extends React.Compone
                     })
                 } else {
                     this.state.inputPlayerMatches.push({
+                        firstPart: line.split(" ")[0],
                         fullName: line,
                         isExactMatch: false,
                         isAdded: false
@@ -163,10 +164,11 @@ module.exports = MobxReact.observer(class PlayerMainWidget extends React.Compone
     getPlayerMatches() {
         return this.state.inputPlayerMatches.map((data, i) => {
             if (data.isFinding === true) {
-                let fuzzyResults = Fuzzysort.go(data.fullName, MainStore.cachedFullNames)
+                let fuzzyResults = Fuzzysort.go(data.firstPart, MainStore.cachedFullNames)
                 let candidatePlayerData = fuzzyResults.map((fuzzyData) => {
                     return Common.findPlayerByFullName(fuzzyData.target)
                 })
+                console.log(1, data, fuzzyResults)
                 let candidates = candidatePlayerData.map((playerData, playerIndex) => {
                     if (this.isPlayerAdded(playerData.key)) {
                         return (

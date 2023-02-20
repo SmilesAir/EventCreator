@@ -1,3 +1,4 @@
+/* eslint-disable no-alert */
 "use strict"
 
 const React = require("react")
@@ -26,12 +27,12 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
     render() {
         return (
             <div>
-                <button onClick={() => Common.createNewEventData()}>New</button>
+                <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName)}>New</button>
                 <button onClick={() => Common.saveToLocalStorage()}>Save</button>
                 <button onClick={() => Common.uploadEventData()}>Upload</button>
                 <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
                 <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
-                <a href="https://forms.gle/gw65dM2d1PLK2jqD9" target="_blank" rel="noreferrer">Create New Event</a>
+                <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
                 <EventWidget />
                 <div className="bodyContainer">
                     <PlayersSideWidget />
@@ -168,7 +169,7 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
         let roundWidgets = []
         for (let roundName in this.props.divisionData.roundData) {
             let roundData = this.props.divisionData.roundData[roundName]
-            roundWidgets.push(<RoundWidget key={roundWidgets.length} roundData={roundData} divisionName={this.props.divisionData.name} />)
+            roundWidgets.push(<RoundWidget key={roundWidgets.length} roundData={roundData} divisionData={this.props.divisionData} />)
         }
 
         return roundWidgets
@@ -258,11 +259,12 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
             return null
         }
 
-        return this.props.divisionData.teams.map((playerKeys) => {
+        return this.props.divisionData.teams.map((playerKeys, index) => {
             return (
                 <div key={Math.random()}>
+                    {`${index + 1}. `}
                     <button onClick={() => this.onRemoveNewTeam(playerKeys)}>X</button>
-                    {`${Common.getTeamRankingPointsByDivision(playerKeys, this.props.divisionData.name)} ${Common.getPlayerNamesString(playerKeys)}`}
+                    {` ${Common.getTeamRankingPointsByDivision(playerKeys, this.props.divisionData.name)} ${Common.getPlayerNamesString(playerKeys)}`}
                 </div>
             )
         })
@@ -374,19 +376,19 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
 
     getPoolWidgets() {
         return this.props.roundData.poolNames.map((name, i) => {
-            let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionName, this.props.roundData.name, name)
-            return <PoolWidget key={i} divisionName={this.props.divisionName} roundData={this.props.roundData} poolName={name} poolKey={poolKey} />
+            let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, this.props.roundData.name, name)
+            return <PoolWidget key={i} divisionName={this.props.divisionData.name} roundData={this.props.roundData} poolName={name} poolKey={poolKey} />
         })
     }
 
     onRoundNameChanged(e) {
         if (this.state.roundName !== e.target.value) {
             runInAction(() => {
-                let newDivisionData = Object.assign({}, MainStore.eventData.eventData.divisionData[this.props.divisionName])
+                let newDivisionData = Object.assign({}, this.props.divisionData)
                 newDivisionData.roundData[e.target.value] = Object.assign({}, newDivisionData.roundData[this.state.roundName])
                 newDivisionData.roundData[e.target.value].name = e.target.value
                 delete newDivisionData.roundData[this.state.roundName]
-                MainStore.eventData.eventData.divisionData[this.props.divisionName] = newDivisionData
+                MainStore.eventData.eventData.divisionData[this.props.divisionData.name] = newDivisionData
 
                 this.state.roundName = e.target.value
                 this.setState(this.state)
@@ -395,9 +397,13 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
     }
 
     getRoundNameWidget() {
+        if (this.props.divisionData === undefined) {
+            return null
+        }
+
         let options = []
         for (let roundName of Common.roundNames) {
-            if (roundName === this.state.roundName || MainStore.eventData.eventData.divisionData[this.props.divisionName].roundData[roundName] === undefined) {
+            if (roundName === this.state.roundName || this.props.divisionData.roundData[roundName] === undefined) {
                 options.push(
                     <option key={roundName} value={roundName}>{roundName}</option>
                 )
@@ -405,7 +411,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
         }
 
         return (
-            <select value={this.state.roundName} disabled={Common.roundHasPools(this.props.divisionName, this.state.roundName)} onChange={(e) => this.onRoundNameChanged(e)}>
+            <select value={this.state.roundName} disabled={Common.roundHasPools(this.props.divisionData.name, this.state.roundName)} onChange={(e) => this.onRoundNameChanged(e)}>
                 <optgroup>
                     {options}
                 </optgroup>
@@ -435,7 +441,58 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
     }
 
     onDeleteRound() {
-        delete MainStore.eventData.eventData.divisionData[this.props.divisionName].roundData[this.props.roundData.name]
+        if (confirm(`Really delete Round ${this.props.roundData.name}?`)) {
+            delete this.props.divisionData.roundData[this.props.roundData.name]
+        }
+    }
+
+    seedRoundFromRankings() {
+        let roundData = this.props.roundData
+        let sortedTeams = this.props.divisionData.teams.slice().sort((a, b) => {
+            return Common.getTeamRankingPointsByDivision(a, this.props.divisionData.name) - Common.getTeamRankingPointsByDivision(b, this.props.divisionData.name)
+        })
+        if (this.props.roundData.name === Common.roundNames[0]) {
+            if (roundData.poolNames.length !== 1) {
+                alert("Trying to seed Finals round, but there are ${roundData.poolNames.length} pools instead of 1")
+                return
+            }
+            let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, roundData.name, roundData.poolNames[0])
+            let poolData = MainStore.eventData.eventData.poolMap[poolKey]
+            poolData.teamData = sortedTeams.map((players) => {
+                return {
+                    players: players,
+                    judgeData: {}
+                }
+            })
+        } else {
+            if (roundData.poolNames.length < 1) {
+                alert("Need at least 1 pool to see Semifinals")
+                return
+            }
+            let poolDatas = roundData.poolNames.map((poolName) => {
+                let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, roundData.name, poolName)
+                return MainStore.eventData.eventData.poolMap[poolKey]
+            })
+            for (let poolData of poolDatas) {
+                poolData.teamData = []
+            }
+            let teamIndex = sortedTeams.length - 1
+            let dir = 1
+            while (teamIndex >= 0) {
+                for (let i = 0; i < poolDatas.length && teamIndex >= 0; ++i) {
+                    let poolIndex = dir > 0 ? i : poolDatas.length - 1 - i
+                    let players = sortedTeams[teamIndex]
+                    let poolData = poolDatas[poolIndex]
+                    poolData.teamData.splice(0, 0, {
+                        players: players,
+                        judgeData: {}
+                    })
+                    --teamIndex
+                }
+
+                dir *= -1
+            }
+        }
     }
 
     render() {
@@ -443,6 +500,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
             <div className="roundWidget">
                 {this.getRoundNameWidget()}
                 {this.getRoutineLengthWidget()}
+                <button onClick={() => this.seedRoundFromRankings()}>Seed Round from Rankings</button>
                 <button onClick={() => this.onDeleteRound()}>Delete Round</button>
                 <div className="roundsContainer">
                     <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>Add Pool</button>
@@ -464,6 +522,10 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
             teamData: []
         }
         this.poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+
+        this.state = {
+            isJudgesWidgetEnabled: false
+        }
     }
 
     onAddTeam(e) {
@@ -534,20 +596,25 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
                 <div key={Math.random()} className="team">
                     <button onClick={() => this.onRemoveNewTeam(index)}>X</button>
                     {`${index + 1}. ${Common.getPlayerNamesString(teamData.players)}`}
-                    <button onClick={() => this.moveTeam(index, 1)}>^</button>
-                    <button onClick={() => this.moveTeam(index, -1)}>v</button>
+                    <button onClick={() => this.moveTeam(index, -1)}>^</button>
+                    <button onClick={() => this.moveTeam(index, 1)}>v</button>
                 </div>
             )
         })
         return (
             <div className="teams">
-                {widgets.reverse()}
+                {widgets}
             </div>
         )
     }
 
     onAddJudge(playerKey, category) {
         this.poolData.judges[playerKey] = category
+    }
+
+    onSelectJudgesClick() {
+        this.state.isJudgesWidgetEnabled = !this.state.isJudgesWidgetEnabled
+        this.setState(this.state)
     }
 
     getJudgeSelectWidget() {
@@ -586,16 +653,26 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
             )
         }
 
-        return (
-            <div>
+        if (this.state.isJudgesWidgetEnabled) {
+            return (
                 <div>
-                    Select Judges
+                    <div className="selectJudges" onClick={() => this.onSelectJudgesClick()}>
+                        Select Judges
+                    </div>
+                    <div>
+                        {judgeWidgets}
+                    </div>
                 </div>
+            )
+        } else {
+            return (
                 <div>
-                    {judgeWidgets}
+                    <div className="selectJudges" onClick={() => this.onSelectJudgesClick()}>
+                        Select Judges
+                    </div>
                 </div>
-            </div>
-        )
+            )
+        }
     }
 
     removeJudge(judgeKey) {

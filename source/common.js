@@ -282,6 +282,10 @@ module.exports.getPlayerNameString = function(playerKey) {
 }
 
 module.exports.getSortedJudgeKeyArray = function(poolData) {
+    if (poolData === undefined) {
+        return []
+    }
+
     let judges = []
     for (let judgeKey in poolData.judges) {
         judges.push({
@@ -302,6 +306,10 @@ module.exports.getSortedJudgeKeyArray = function(poolData) {
 }
 
 module.exports.poolDataContainsCompetitor = function(poolData, competitorKey) {
+    if (poolData === undefined) {
+        return false
+    }
+
     for (let teamData of poolData.teamData) {
         if (teamData.players.find((key) => key === competitorKey) !== undefined) {
             return true
@@ -312,7 +320,7 @@ module.exports.poolDataContainsCompetitor = function(poolData, competitorKey) {
 }
 
 module.exports.poolDataContainsJudge = function(poolData, judgeKey) {
-    return poolData.judges[judgeKey] !== undefined
+    return poolData && poolData.judges[judgeKey] !== undefined
 }
 
 module.exports.getMissingDivisionName = function() {
