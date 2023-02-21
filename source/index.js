@@ -54,8 +54,9 @@ const EventWidget = MobxReact.observer(class EventWidget extends React.Component
     onSelectEventChanged(selected) {
         MainStore.selectedEventKey = selected.value
 
-        console.log(selected)
-        MainStore.eventData.eventName = selected.label
+        if (MainStore.eventData !== undefined) {
+            MainStore.eventData.eventName = selected.label
+        }
     }
 
     render() {

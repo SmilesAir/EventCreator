@@ -182,11 +182,14 @@ module.exports.saveToLocalStorage = function() {
 
 module.exports.loadFromLocalStorage = function() {
     MainStore.selectedEventKey = localStorage.getItem("selectedEventKey") || undefined
-    MainStore.eventData = JSON.parse(localStorage.getItem("eventData") || undefined)
+    let localStorageEventData = localStorage.getItem("eventData")
+    MainStore.eventData = localStorageEventData && JSON.parse(localStorageEventData) || undefined
 
-    removeBadPoolData(MainStore.eventData.eventData.poolMap)
+    if (MainStore.eventData !== undefined) {
+        removeBadPoolData(MainStore.eventData.eventData.poolMap)
 
-    Common.updateCachedRegisteredFullNames()
+        Common.updateCachedRegisteredFullNames()
+    }
 }
 
 function removeBadPoolData(poolMap) {
