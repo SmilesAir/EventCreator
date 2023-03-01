@@ -15,6 +15,11 @@ const PlayersSideWidget = require("playersSideWidget.js")
 
 require("index.less")
 
+let collapseCallbacks = []
+function registerCollapseCallback(callback) {
+    collapseCallbacks.push(callback)
+}
+
 const EventCreator = MobxReact.observer(class EventCreator extends React.Component {
     constructor() {
         super()
@@ -24,21 +29,41 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
         })
     }
 
+    saveAndUpload() {
+        Common.saveToLocalStorage()
+        Common.uploadEventData()
+    }
+
+    collapseAll() {
+        for (let callback of collapseCallbacks) {
+            if (callback !== undefined) {
+                // eslint-disable-next-line callback-return
+                callback()
+            }
+        }
+
+        document.getElementById("scrollContainer").scrollTop = 0
+    }
+
     render() {
         return (
-            <div>
-                <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName)}>New</button>
-                <button onClick={() => Common.saveToLocalStorage()}>Save</button>
-                <button onClick={() => Common.uploadEventData()}>Upload</button>
-                <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
-                <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
-                <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
-                <EventWidget />
-                <div className="bodyContainer">
-                    <PlayersSideWidget />
-                    <div className="mainWidget">
-                        <PlayersMainWidget />
-                        <DivisionListWidget />
+            <div className="topContainer">
+                <div className="menu">
+                    <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName)}>New</button>
+                    <button onClick={() => this.saveAndUpload}>Save and Upload</button>
+                    <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
+                    <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
+                    <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
+                    <button onClick={() => this.collapseAll()}>Collapse All</button>
+                </div>
+                <div id="scrollContainer" className="scrollContainer">
+                    <EventWidget />
+                    <div className="bodyContainer">
+                        <PlayersSideWidget />
+                        <div className="mainWidget">
+                            <PlayersMainWidget />
+                            <DivisionListWidget />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -151,6 +176,11 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
             parsedTeamState: [],
             divisionName: this.props.divisionData && this.props.divisionData.name
         }
+
+        registerCollapseCallback(() => {
+            this.state.isTeamWidgetEnabled = false
+            this.setState(this.state)
+        })
     }
 
     onAddRound() {
@@ -275,17 +305,17 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
         if (this.state.isTeamWidgetEnabled !== true) {
             return (
                 <div className="teamsWidget">
-                    <h3 onClick={() => this.onTeamsWidgetClicked()}>
+                    <div className="editTeams" onClick={() => this.onTeamsWidgetClicked()}>
                         Edit Teams
-                    </h3>
+                    </div>
                 </div>
             )
         } else {
             return (
                 <div className="teamsWidget enabled">
-                    <h3 onClick={() => this.onTeamsWidgetClicked()}>
+                    <div className="editTeams" onClick={() => this.onTeamsWidgetClicked()}>
                         Edit Teams
-                    </h3>
+                    </div>
                     <div className="top">
                         <div>
                             <div>
@@ -367,8 +397,14 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
 
         this.state = {
             roundName: this.props.roundData && this.props.roundData.name,
-            routineLength: this.props.roundData.lengthSeconds
+            routineLength: this.props.roundData.lengthSeconds,
+            isRoundWidgetEnabled: false
         }
+
+        registerCollapseCallback(() => {
+            this.state.isRoundWidgetEnabled = false
+            this.setState(this.state)
+        })
     }
 
     onAddPool() {
@@ -496,20 +532,33 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
         }
     }
 
+    onRoundWidgetClicked() {
+        this.state.isRoundWidgetEnabled = !this.state.isRoundWidgetEnabled
+        this.setState(this.state)
+    }
+
     render() {
-        return (
-            <div className="roundWidget">
-                {this.getRoundNameWidget()}
-                {this.getRoutineLengthWidget()}
-                <button onClick={() => this.seedRoundFromRankings()}>Seed Round from Rankings</button>
-                <button onClick={() => this.onDeleteRound()}>Delete Round</button>
-                <div className="roundsContainer">
-                    <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>Add Pool</button>
-                    Pools
-                    {this.getPoolWidgets()}
+        if (this.state.isRoundWidgetEnabled) {
+            return (
+                <div className="roundWidget">
+                    {this.getRoundNameWidget()}
+                    {this.getRoutineLengthWidget()}
+                    <button onClick={() => this.seedRoundFromRankings()}>Seed Round from Rankings</button>
+                    <button onClick={() => this.onDeleteRound()}>Delete Round</button>
+                    <div className="roundsContainer">
+                        <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>Add Pool</button>
+                        Pools
+                        {this.getPoolWidgets()}
+                    </div>
                 </div>
-            </div>
-        )
+            )
+        } else {
+            return (
+                <div className="roundWidgetCollapsed" onClick={() => this.onRoundWidgetClicked()}>
+                    {this.props.roundData.name}
+                </div>
+            )
+        }
     }
 })
 
@@ -527,6 +576,11 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
         this.state = {
             isJudgesWidgetEnabled: false
         }
+
+        registerCollapseCallback(() => {
+            this.state.isJudgesWidgetEnabled = false
+            this.setState(this.state)
+        })
     }
 
     onAddTeam(e) {
@@ -570,7 +624,7 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     }
 
     onAddTeamSelected(selected) {
-        this.poolData.teamData.push({
+        this.poolData.teamData.splice(0, 0, {
             players: selected.value,
             judgeData: {}
         })
