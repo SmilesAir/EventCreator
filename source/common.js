@@ -1,5 +1,7 @@
 "use strict"
 
+const StringSimilarity = require("string-similarity")
+
 const MainStore = require("mainStore.js")
 const Endpoints = require("endpoints.js")
 
@@ -445,4 +447,32 @@ module.exports.getTeamRankingPointsByDivision = function(playerKeys, divisionNam
     }
 
     return sum
+}
+
+module.exports.getSimilarPlayerDataByName = function(name, nameList) {
+    let bestNames = []
+    const maxCount = 10
+    for (let cachedName of nameList) {
+        let similar = StringSimilarity.compareTwoStrings(name, cachedName)
+        if (similar > 0) {
+            if (bestNames.length < maxCount || similar > bestNames[maxCount - 1].score) {
+                let index = bestNames.findIndex((data) => data.score < similar)
+                bestNames.splice(index >= 0 ? index : bestNames.length, 0, {
+                    name: cachedName,
+                    score: similar
+                })
+
+                if (bestNames.length > maxCount) {
+                    bestNames.pop()
+                }
+            }
+        }
+    }
+
+    let playerDatas = []
+    for (let data of bestNames) {
+        playerDatas.push(Common.findPlayerByFullName(data.name))
+    }
+
+    return playerDatas
 }

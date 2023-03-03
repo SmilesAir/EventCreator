@@ -4,7 +4,6 @@
 const React = require("react")
 const ReactDOM = require("react-dom")
 const MobxReact = require("mobx-react")
-const Fuzzysort = require("fuzzysort")
 const ReactSelect = require("react-select").default
 const { runInAction } = require("mobx")
 
@@ -221,11 +220,11 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
             this.state.parsedTeamState.push(teamState)
             let names = line.split("_")
             for (let name of names) {
-                let fuzzyResults = Fuzzysort.go(name.trim(), MainStore.cachedRegisteredFullNames)
-                let options = fuzzyResults.map((result) => {
+                let candidatePlayerData = Common.getSimilarPlayerDataByName(name.trim(), MainStore.cachedRegisteredFullNames)
+                let options = candidatePlayerData.map((playerData) => {
                     return {
-                        value: result.target,
-                        label: result.target
+                        value: playerData.firstName + " " + playerData.lastName,
+                        label: playerData.firstName + " " + playerData.lastName
                     }
                 })
                 let defaultOption = options[0] || {

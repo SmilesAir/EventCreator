@@ -3,7 +3,6 @@
 
 const React = require("react")
 const MobxReact = require("mobx-react")
-const Fuzzysort = require("fuzzysort")
 
 const MainStore = require("mainStore.js")
 const Common = require("common.js")
@@ -164,11 +163,7 @@ module.exports = MobxReact.observer(class PlayerMainWidget extends React.Compone
     getPlayerMatches() {
         return this.state.inputPlayerMatches.map((data, i) => {
             if (data.isFinding === true) {
-                let fuzzyResults = Fuzzysort.go(data.firstPart, MainStore.cachedFullNames)
-                let candidatePlayerData = fuzzyResults.map((fuzzyData) => {
-                    return Common.findPlayerByFullName(fuzzyData.target)
-                })
-                console.log(1, data, fuzzyResults)
+                let candidatePlayerData = Common.getSimilarPlayerDataByName(data.fullName, MainStore.cachedFullNames)
                 let candidates = candidatePlayerData.map((playerData, playerIndex) => {
                     if (this.isPlayerAdded(playerData.key)) {
                         return (
