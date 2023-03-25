@@ -476,3 +476,25 @@ module.exports.getSimilarPlayerDataByName = function(name, nameList) {
 
     return playerDatas
 }
+
+module.exports.getPlaceFromNumber = function(number) {
+    switch (number) {
+    case 1:
+        return "1st"
+    case 2:
+        return "2nd"
+    case 3:
+        return "3rd"
+    default:
+        return `${number}th`
+    }
+}
+
+module.exports.getPreviousRoundName = function(roundName) {
+    let index = Common.roundNames.findIndex((name) => name === roundName)
+    if (index < 0) {
+        return undefined
+    }
+
+    return index + 1 < Common.roundNames.length ? Common.roundNames[index + 1] : undefined
+}

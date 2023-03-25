@@ -49,7 +49,7 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
             <div className="topContainer">
                 <div className="menu">
                     <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName)}>New</button>
-                    <button onClick={() => this.saveAndUpload}>Save and Upload</button>
+                    <button onClick={() => this.saveAndUpload()}>Save and Upload</button>
                     <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
                     <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
                     <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
@@ -173,7 +173,8 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
             inputTeamsText: "",
             parsedTeamWidgets: undefined,
             parsedTeamState: [],
-            divisionName: this.props.divisionData && this.props.divisionData.name
+            divisionName: this.props.divisionData && this.props.divisionData.name,
+            rulesId: this.props.divisionData && this.props.divisionData.rulesId || "Fpa2020"
         }
 
         registerCollapseCallback(() => {
@@ -374,10 +375,32 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
         delete MainStore.eventData.eventData.divisionData[this.state.divisionName]
     }
 
+    onDivisionRulesChanged(e) {
+        if (this.state.rulesId !== e.target.value) {
+            runInAction(() => {
+                MainStore.eventData.eventData.divisionData[this.state.divisionName].rulesId = e.target.value
+                this.state.rulesId = e.target.value
+                this.setState(this.state)
+            })
+        }
+    }
+
+    getDivisionRulesWidget() {
+        return (
+            <select value={this.state.rulesId} onChange={(e) => this.onDivisionRulesChanged(e)}>
+                <optgroup>
+                    <option key="Fpa2020" value="Fpa2020">FPA 2020</option>
+                    <option key="SimpleRanking" value="SimpleRanking">Simple Ranking</option>
+                </optgroup>
+            </select>
+        )
+    }
+
     render() {
         return (
             <div className="divisionWidget">
                 {this.getDivisionNameWidget()}
+                {this.getDivisionRulesWidget()}
                 <button onClick={() => this.onDeleteDivision()}>Delete Division</button>
                 <div className="roundsContainer">
                     <button className="addRoundButton" disabled={Common.getMissingRoundName(this.state.divisionName) === undefined} onClick={(e) => this.onAddRound(e)}>Add Round</button>
@@ -531,6 +554,76 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
         }
     }
 
+    seedRoundFromPreviousRound() {
+        // Only works for finals for now
+        let roundData = this.props.roundData
+        if (roundData.name !== "Finals") {
+            return
+        }
+
+        let previousRoundName = Common.getPreviousRoundName(roundData.name)
+        if (previousRoundName === undefined) {
+            return
+        }
+
+        let divisionName = this.props.divisionData.name
+        let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+        let maxTeamCount = divisionData.roundData[previousRoundName].poolNames.length === 3 ? 9 : 8
+
+        let sortedTeamsFromResults = divisionData.roundData[previousRoundName].poolNames.map((poolName) => {
+            let poolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, previousRoundName, poolName)
+            let poolData = MainStore.eventData.eventData.poolMap[poolKey]
+            let sortedTeams = poolData.teamData.slice()
+            sortedTeams.sort((a, b) => {
+                if (a.teamScore === undefined && b.teamScore === undefined) {
+                    return 0
+                } else if (a.teamScore === undefined) {
+                    return 1
+                } else if (b.teamScore === undefined) {
+                    return -1
+                } else {
+                    return b.teamScore - a.teamScore
+                }
+            })
+
+            console.log(sortedTeams.map((team) => Common.getPlayerNamesString(team.players)))
+
+            return sortedTeams.map((teamData) => {
+                return teamData.players
+            })
+        })
+
+        let smallestPoolTeamCount = Number.MAX_SAFE_INTEGER
+        for (let teams of sortedTeamsFromResults) {
+            smallestPoolTeamCount = Math.min(smallestPoolTeamCount, teams.length)
+        }
+
+        let finalsPoolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, "Finals", "A")
+        let finalsPoolData = MainStore.eventData.eventData.poolMap[finalsPoolKey]
+        finalsPoolData.teamData = []
+        for (let i = 0; i < smallestPoolTeamCount; ++i) {
+            let placeTeams = []
+            for (let teams of sortedTeamsFromResults) {
+                placeTeams.push(teams[i])
+            }
+
+            placeTeams.sort((a, b) => {
+                return Common.getTeamRankingPointsByDivision(b, divisionName) - Common.getTeamRankingPointsByDivision(a, divisionName)
+            })
+
+            for (let team of placeTeams) {
+                finalsPoolData.teamData.splice(0, 0, {
+                    players: team,
+                    judgeData: {}
+                })
+
+                if (finalsPoolData.teamData.length >= maxTeamCount) {
+                    return
+                }
+            }
+        }
+    }
+
     onRoundWidgetClicked() {
         this.state.isRoundWidgetEnabled = !this.state.isRoundWidgetEnabled
         this.setState(this.state)
@@ -543,6 +636,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
                     {this.getRoundNameWidget()}
                     {this.getRoutineLengthWidget()}
                     <button onClick={() => this.seedRoundFromRankings()}>Seed Round from Rankings</button>
+                    <button onClick={() => this.seedRoundFromPreviousRound()}>Seed Round from Previous Round</button>
                     <button onClick={() => this.onDeleteRound()}>Delete Round</button>
                     <div className="roundsContainer">
                         <button className="addPoolButton" onClick={(e) => this.onAddPool(e)}>Add Pool</button>
@@ -570,7 +664,6 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
             judges: {},
             teamData: []
         }
-        this.poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
 
         this.state = {
             isJudgesWidgetEnabled: false
@@ -623,37 +716,59 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     }
 
     onAddTeamSelected(selected) {
-        this.poolData.teamData.splice(0, 0, {
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        poolData.teamData.splice(0, 0, {
             players: selected.value,
             judgeData: {}
         })
     }
 
     onRemoveNewTeam(index) {
-        this.poolData.teamData.splice(index, 1)
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        poolData.teamData.splice(index, 1)
     }
 
     moveTeam(index, dir) {
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
         let newIndex = index + dir
-        if (newIndex < 0 || newIndex >= this.poolData.teamData.length) {
+        if (newIndex < 0 || newIndex >= poolData.teamData.length) {
             return
         }
 
-        let temp = this.poolData.teamData[newIndex]
-        this.poolData.teamData[newIndex] = this.poolData.teamData[index]
-        this.poolData.teamData[index] = temp
+        let temp = poolData.teamData[newIndex]
+        poolData.teamData[newIndex] = poolData.teamData[index]
+        poolData.teamData[index] = temp
     }
 
     getTeamsWidget() {
-        let widgets = this.poolData.teamData.map((teamData, index) => {
-            return (
-                <div key={Math.random()} className="team">
-                    <button onClick={() => this.onRemoveNewTeam(index)}>X</button>
-                    {`${index + 1}. ${Common.getPlayerNamesString(teamData.players)}`}
-                    <button onClick={() => this.moveTeam(index, -1)}>^</button>
-                    <button onClick={() => this.moveTeam(index, 1)}>v</button>
-                </div>
-            )
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        // Does not support ties
+        let sortedScores = []
+        for (let teamData of poolData.teamData) {
+            if (teamData.teamScore !== undefined) {
+                sortedScores.push(teamData.teamScore)
+            }
+        }
+        sortedScores.sort((a, b) => b - a)
+        let widgets = poolData.teamData.map((teamData, index) => {
+            let sortedScoreIndex = sortedScores.findIndex((score) => score === teamData.teamScore)
+            let teamRank = sortedScoreIndex >= 0 ? sortedScoreIndex + 1 : undefined
+            if (teamRank !== undefined) {
+                return (
+                    <div key={Math.random()} className="team">
+                        {`${index + 1}. ${Common.getPlayerNamesString(teamData.players)} (${Common.getPlaceFromNumber(teamRank)})`}
+                    </div>
+                )
+            } else {
+                return (
+                    <div key={Math.random()} className="team">
+                        <button onClick={() => this.onRemoveNewTeam(index)}>X</button>
+                        {`${index + 1}. ${Common.getPlayerNamesString(teamData.players)}`}
+                        <button onClick={() => this.moveTeam(index, -1)}>^</button>
+                        <button onClick={() => this.moveTeam(index, 1)}>v</button>
+                    </div>
+                )
+            }
         })
         return (
             <div className="teams">
@@ -663,7 +778,8 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     }
 
     onAddJudge(playerKey, category) {
-        this.poolData.judges[playerKey] = category
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        poolData.judges[playerKey] = category
     }
 
     onSelectJudgesClick() {
@@ -674,8 +790,9 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     getJudgeSelectWidget() {
         let judgeWidgets = []
         let filteredPlayerKeys = []
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
         for (let playerKey in MainStore.eventData.eventData.playerData) {
-            if (!Common.poolDataContainsCompetitor(this.poolData, playerKey) && !Common.poolDataContainsJudge(this.poolData, playerKey)) {
+            if (!Common.poolDataContainsCompetitor(poolData, playerKey) && !Common.poolDataContainsJudge(poolData, playerKey)) {
                 filteredPlayerKeys.push(playerKey)
             }
         }
@@ -730,13 +847,15 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     }
 
     removeJudge(judgeKey) {
-        delete this.poolData.judges[judgeKey]
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        delete poolData.judges[judgeKey]
     }
 
     getJudgesWidget() {
-        let judgeKeys = Common.getSortedJudgeKeyArray(this.poolData)
+        let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        let judgeKeys = Common.getSortedJudgeKeyArray(poolData)
         let judgeWidgets = judgeKeys.map((key) => {
-            let category = this.poolData.judges[key]
+            let category = poolData.judges[key]
             let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, this.props.divisionName, this.props.roundData.name, this.props.poolName)
             let cn = isPlayingInOtherPool ? "playingInOtherPool" : ""
             let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined

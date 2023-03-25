@@ -57326,6 +57326,34 @@ module.exports.getSimilarPlayerDataByName = function (name, nameList) {
   return playerDatas;
 };
 
+module.exports.getPlaceFromNumber = function (number) {
+  switch (number) {
+    case 1:
+      return "1st";
+
+    case 2:
+      return "2nd";
+
+    case 3:
+      return "3rd";
+
+    default:
+      return "".concat(number, "th");
+  }
+};
+
+module.exports.getPreviousRoundName = function (roundName) {
+  var index = Common.roundNames.findIndex(function (name) {
+    return name === roundName;
+  });
+
+  if (index < 0) {
+    return undefined;
+  }
+
+  return index + 1 < Common.roundNames.length ? Common.roundNames[index + 1] : undefined;
+};
+
 /***/ }),
 
 /***/ "./source/endpoints.js":
@@ -57502,7 +57530,7 @@ var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) 
         }
       }, "New"), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
-          return _this2.saveAndUpload;
+          return _this2.saveAndUpload();
         }
       }, "Save and Upload"), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
@@ -57672,7 +57700,8 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       inputTeamsText: "",
       parsedTeamWidgets: undefined,
       parsedTeamState: [],
-      divisionName: _this5.props.divisionData && _this5.props.divisionData.name
+      divisionName: _this5.props.divisionData && _this5.props.divisionData.name,
+      rulesId: _this5.props.divisionData && _this5.props.divisionData.rulesId || "Fpa2020"
     };
     registerCollapseCallback(function () {
       _this5.state.isTeamWidgetEnabled = false;
@@ -57975,15 +58004,47 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       delete MainStore.eventData.eventData.divisionData[this.state.divisionName];
     }
   }, {
+    key: "onDivisionRulesChanged",
+    value: function onDivisionRulesChanged(e) {
+      var _this11 = this;
+
+      if (this.state.rulesId !== e.target.value) {
+        runInAction(function () {
+          MainStore.eventData.eventData.divisionData[_this11.state.divisionName].rulesId = e.target.value;
+          _this11.state.rulesId = e.target.value;
+
+          _this11.setState(_this11.state);
+        });
+      }
+    }
+  }, {
+    key: "getDivisionRulesWidget",
+    value: function getDivisionRulesWidget() {
+      var _this12 = this;
+
+      return /*#__PURE__*/React.createElement("select", {
+        value: this.state.rulesId,
+        onChange: function onChange(e) {
+          return _this12.onDivisionRulesChanged(e);
+        }
+      }, /*#__PURE__*/React.createElement("optgroup", null, /*#__PURE__*/React.createElement("option", {
+        key: "Fpa2020",
+        value: "Fpa2020"
+      }, "FPA 2020"), /*#__PURE__*/React.createElement("option", {
+        key: "SimpleRanking",
+        value: "SimpleRanking"
+      }, "Simple Ranking")));
+    }
+  }, {
     key: "render",
     value: function render() {
-      var _this11 = this;
+      var _this13 = this;
 
       return /*#__PURE__*/React.createElement("div", {
         className: "divisionWidget"
-      }, this.getDivisionNameWidget(), /*#__PURE__*/React.createElement("button", {
+      }, this.getDivisionNameWidget(), this.getDivisionRulesWidget(), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
-          return _this11.onDeleteDivision();
+          return _this13.onDeleteDivision();
         }
       }, "Delete Division"), /*#__PURE__*/React.createElement("div", {
         className: "roundsContainer"
@@ -57991,7 +58052,7 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
         className: "addRoundButton",
         disabled: Common.getMissingRoundName(this.state.divisionName) === undefined,
         onClick: function onClick(e) {
-          return _this11.onAddRound(e);
+          return _this13.onAddRound(e);
         }
       }, "Add Round"), this.getTeamsWidget(), "Rounds", this.getRoundWidgets()));
     }
@@ -58005,22 +58066,22 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   var _super5 = _createSuper(RoundWidget);
 
   function RoundWidget(props) {
-    var _this12;
+    var _this14;
 
     _classCallCheck(this, RoundWidget);
 
-    _this12 = _super5.call(this, props);
-    _this12.state = {
-      roundName: _this12.props.roundData && _this12.props.roundData.name,
-      routineLength: _this12.props.roundData.lengthSeconds,
+    _this14 = _super5.call(this, props);
+    _this14.state = {
+      roundName: _this14.props.roundData && _this14.props.roundData.name,
+      routineLength: _this14.props.roundData.lengthSeconds,
       isRoundWidgetEnabled: false
     };
     registerCollapseCallback(function () {
-      _this12.state.isRoundWidgetEnabled = false;
+      _this14.state.isRoundWidgetEnabled = false;
 
-      _this12.setState(_this12.state);
+      _this14.setState(_this14.state);
     });
-    return _this12;
+    return _this14;
   }
 
   _createClass(RoundWidget, [{
@@ -58031,14 +58092,14 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   }, {
     key: "getPoolWidgets",
     value: function getPoolWidgets() {
-      var _this13 = this;
+      var _this15 = this;
 
       return this.props.roundData.poolNames.map(function (name, i) {
-        var poolKey = Common.makePoolKey(MainStore.eventData.key, _this13.props.divisionData.name, _this13.props.roundData.name, name);
+        var poolKey = Common.makePoolKey(MainStore.eventData.key, _this15.props.divisionData.name, _this15.props.roundData.name, name);
         return /*#__PURE__*/React.createElement(PoolWidget, {
           key: i,
-          divisionName: _this13.props.divisionData.name,
-          roundData: _this13.props.roundData,
+          divisionName: _this15.props.divisionData.name,
+          roundData: _this15.props.roundData,
           poolName: name,
           poolKey: poolKey
         });
@@ -58047,25 +58108,25 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   }, {
     key: "onRoundNameChanged",
     value: function onRoundNameChanged(e) {
-      var _this14 = this;
+      var _this16 = this;
 
       if (this.state.roundName !== e.target.value) {
         runInAction(function () {
-          var newDivisionData = Object.assign({}, _this14.props.divisionData);
-          newDivisionData.roundData[e.target.value] = Object.assign({}, newDivisionData.roundData[_this14.state.roundName]);
+          var newDivisionData = Object.assign({}, _this16.props.divisionData);
+          newDivisionData.roundData[e.target.value] = Object.assign({}, newDivisionData.roundData[_this16.state.roundName]);
           newDivisionData.roundData[e.target.value].name = e.target.value;
-          delete newDivisionData.roundData[_this14.state.roundName];
-          MainStore.eventData.eventData.divisionData[_this14.props.divisionData.name] = newDivisionData;
-          _this14.state.roundName = e.target.value;
+          delete newDivisionData.roundData[_this16.state.roundName];
+          MainStore.eventData.eventData.divisionData[_this16.props.divisionData.name] = newDivisionData;
+          _this16.state.roundName = e.target.value;
 
-          _this14.setState(_this14.state);
+          _this16.setState(_this16.state);
         });
       }
     }
   }, {
     key: "getRoundNameWidget",
     value: function getRoundNameWidget() {
-      var _this15 = this;
+      var _this17 = this;
 
       if (this.props.divisionData === undefined) {
         return null;
@@ -58097,7 +58158,7 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
         value: this.state.roundName,
         disabled: Common.roundHasPools(this.props.divisionData.name, this.state.roundName),
         onChange: function onChange(e) {
-          return _this15.onRoundNameChanged(e);
+          return _this17.onRoundNameChanged(e);
         }
       }, /*#__PURE__*/React.createElement("optgroup", null, options));
     }
@@ -58111,7 +58172,7 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   }, {
     key: "getRoutineLengthWidget",
     value: function getRoutineLengthWidget() {
-      var _this16 = this;
+      var _this18 = this;
 
       var options = [/*#__PURE__*/React.createElement("option", {
         key: 2,
@@ -58129,7 +58190,7 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
       return /*#__PURE__*/React.createElement("select", {
         value: this.state.routineLength,
         onChange: function onChange(e) {
-          return _this16.onRoutineLengthChanged(e);
+          return _this18.onRoutineLengthChanged(e);
         }
       }, options);
     }
@@ -58143,11 +58204,11 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   }, {
     key: "seedRoundFromRankings",
     value: function seedRoundFromRankings() {
-      var _this17 = this;
+      var _this19 = this;
 
       var roundData = this.props.roundData;
       var sortedTeams = this.props.divisionData.teams.slice().sort(function (a, b) {
-        return Common.getTeamRankingPointsByDivision(a, _this17.props.divisionData.name) - Common.getTeamRankingPointsByDivision(b, _this17.props.divisionData.name);
+        return Common.getTeamRankingPointsByDivision(a, _this19.props.divisionData.name) - Common.getTeamRankingPointsByDivision(b, _this19.props.divisionData.name);
       });
 
       if (this.props.roundData.name === Common.roundNames[0]) {
@@ -58171,7 +58232,7 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
         }
 
         var poolDatas = roundData.poolNames.map(function (poolName) {
-          var poolKey = Common.makePoolKey(MainStore.eventData.key, _this17.props.divisionData.name, roundData.name, poolName);
+          var poolKey = Common.makePoolKey(MainStore.eventData.key, _this19.props.divisionData.name, roundData.name, poolName);
           return MainStore.eventData.eventData.poolMap[poolKey];
         });
 
@@ -58211,6 +58272,106 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
       }
     }
   }, {
+    key: "seedRoundFromPreviousRound",
+    value: function seedRoundFromPreviousRound() {
+      // Only works for finals for now
+      var roundData = this.props.roundData;
+
+      if (roundData.name !== "Finals") {
+        return;
+      }
+
+      var previousRoundName = Common.getPreviousRoundName(roundData.name);
+
+      if (previousRoundName === undefined) {
+        return;
+      }
+
+      var divisionName = this.props.divisionData.name;
+      var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
+      var maxTeamCount = divisionData.roundData[previousRoundName].poolNames.length === 3 ? 9 : 8;
+      var sortedTeamsFromResults = divisionData.roundData[previousRoundName].poolNames.map(function (poolName) {
+        var poolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, previousRoundName, poolName);
+        var poolData = MainStore.eventData.eventData.poolMap[poolKey];
+        var sortedTeams = poolData.teamData.slice();
+        sortedTeams.sort(function (a, b) {
+          if (a.teamScore === undefined && b.teamScore === undefined) {
+            return 0;
+          } else if (a.teamScore === undefined) {
+            return 1;
+          } else if (b.teamScore === undefined) {
+            return -1;
+          } else {
+            return b.teamScore - a.teamScore;
+          }
+        });
+        console.log(sortedTeams.map(function (team) {
+          return Common.getPlayerNamesString(team.players);
+        }));
+        return sortedTeams.map(function (teamData) {
+          return teamData.players;
+        });
+      });
+      console.log(sortedTeamsFromResults.map(function (teams) {
+        return teams.map(function (team) {
+          return Common.getPlayerNamesString(team);
+        });
+      }));
+      var smallestPoolTeamCount = Number.MAX_SAFE_INTEGER;
+
+      var _iterator9 = _createForOfIteratorHelper(sortedTeamsFromResults),
+          _step9;
+
+      try {
+        for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+          var _teams = _step9.value;
+          smallestPoolTeamCount = Math.min(smallestPoolTeamCount, _teams.length);
+        }
+      } catch (err) {
+        _iterator9.e(err);
+      } finally {
+        _iterator9.f();
+      }
+
+      var finalsPoolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, "Finals", "A");
+      var finalsPoolData = MainStore.eventData.eventData.poolMap[finalsPoolKey];
+      finalsPoolData.teamData = [];
+
+      for (var i = 0; i < smallestPoolTeamCount; ++i) {
+        var placeTeams = [];
+
+        var _iterator10 = _createForOfIteratorHelper(sortedTeamsFromResults),
+            _step10;
+
+        try {
+          for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+            var teams = _step10.value;
+            placeTeams.push(teams[i]);
+          }
+        } catch (err) {
+          _iterator10.e(err);
+        } finally {
+          _iterator10.f();
+        }
+
+        placeTeams.sort(function (a, b) {
+          return Common.getTeamRankingPointsByDivision(b, divisionName) - Common.getTeamRankingPointsByDivision(a, divisionName);
+        });
+
+        for (var _i = 0, _placeTeams = placeTeams; _i < _placeTeams.length; _i++) {
+          var team = _placeTeams[_i];
+          finalsPoolData.teamData.splice(0, 0, {
+            players: team,
+            judgeData: {}
+          });
+
+          if (finalsPoolData.teamData.length >= maxTeamCount) {
+            return;
+          }
+        }
+      }
+    }
+  }, {
     key: "onRoundWidgetClicked",
     value: function onRoundWidgetClicked() {
       this.state.isRoundWidgetEnabled = !this.state.isRoundWidgetEnabled;
@@ -58219,32 +58380,36 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
   }, {
     key: "render",
     value: function render() {
-      var _this18 = this;
+      var _this20 = this;
 
       if (this.state.isRoundWidgetEnabled) {
         return /*#__PURE__*/React.createElement("div", {
           className: "roundWidget"
         }, this.getRoundNameWidget(), this.getRoutineLengthWidget(), /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this18.seedRoundFromRankings();
+            return _this20.seedRoundFromRankings();
           }
         }, "Seed Round from Rankings"), /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this18.onDeleteRound();
+            return _this20.seedRoundFromPreviousRound();
+          }
+        }, "Seed Round from Previous Round"), /*#__PURE__*/React.createElement("button", {
+          onClick: function onClick() {
+            return _this20.onDeleteRound();
           }
         }, "Delete Round"), /*#__PURE__*/React.createElement("div", {
           className: "roundsContainer"
         }, /*#__PURE__*/React.createElement("button", {
           className: "addPoolButton",
           onClick: function onClick(e) {
-            return _this18.onAddPool(e);
+            return _this20.onAddPool(e);
           }
         }, "Add Pool"), "Pools", this.getPoolWidgets()));
       } else {
         return /*#__PURE__*/React.createElement("div", {
           className: "roundWidgetCollapsed",
           onClick: function onClick() {
-            return _this18.onRoundWidgetClicked();
+            return _this20.onRoundWidgetClicked();
           }
         }, this.props.roundData.name);
       }
@@ -58259,26 +58424,25 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   var _super6 = _createSuper(PoolWidget);
 
   function PoolWidget(props) {
-    var _this19;
+    var _this21;
 
     _classCallCheck(this, PoolWidget);
 
-    _this19 = _super6.call(this, props);
-    MainStore.eventData.eventData.poolMap[_this19.props.poolKey] = MainStore.eventData.eventData.poolMap[_this19.props.poolKey] || {
-      key: _this19.props.poolKey,
+    _this21 = _super6.call(this, props);
+    MainStore.eventData.eventData.poolMap[_this21.props.poolKey] = MainStore.eventData.eventData.poolMap[_this21.props.poolKey] || {
+      key: _this21.props.poolKey,
       judges: {},
       teamData: []
     };
-    _this19.poolData = MainStore.eventData.eventData.poolMap[_this19.props.poolKey];
-    _this19.state = {
+    _this21.state = {
       isJudgesWidgetEnabled: false
     };
     registerCollapseCallback(function () {
-      _this19.state.isJudgesWidgetEnabled = false;
+      _this21.state.isJudgesWidgetEnabled = false;
 
-      _this19.setState(_this19.state);
+      _this21.setState(_this21.state);
     });
-    return _this19;
+    return _this21;
   }
 
   _createClass(PoolWidget, [{
@@ -58287,7 +58451,7 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "getAddTeamOptions",
     value: function getAddTeamOptions() {
-      var _this20 = this;
+      var _this22 = this;
 
       var divisionData = MainStore.eventData.eventData.divisionData[this.props.divisionName];
 
@@ -58296,26 +58460,26 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
       }
 
       var poolDatas = this.props.roundData.poolNames.map(function (poolName) {
-        return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, _this20.props.divisionName, _this20.props.roundData.name, poolName)];
+        return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, _this22.props.divisionName, _this22.props.roundData.name, poolName)];
       }).filter(function (item) {
         return item !== undefined;
       });
       var options = [];
 
-      var _iterator9 = _createForOfIteratorHelper(divisionData.teams),
-          _step9;
+      var _iterator11 = _createForOfIteratorHelper(divisionData.teams),
+          _step11;
 
       try {
         var _loop3 = function _loop3() {
-          var team = _step9.value;
+          var team = _step11.value;
           var teamExists = false;
 
-          var _iterator10 = _createForOfIteratorHelper(poolDatas),
-              _step10;
+          var _iterator12 = _createForOfIteratorHelper(poolDatas),
+              _step12;
 
           try {
-            for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-              var poolData = _step10.value;
+            for (_iterator12.s(); !(_step12 = _iterator12.n()).done;) {
+              var poolData = _step12.value;
               teamExists = poolData.teamData.find(function (teamData) {
                 return teamData.players.find(function (playerKey) {
                   return team[0] === playerKey;
@@ -58327,9 +58491,9 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
               }
             }
           } catch (err) {
-            _iterator10.e(err);
+            _iterator12.e(err);
           } finally {
-            _iterator10.f();
+            _iterator12.f();
           }
 
           if (!teamExists) {
@@ -58340,13 +58504,13 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
           }
         };
 
-        for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+        for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
           _loop3();
         }
       } catch (err) {
-        _iterator9.e(err);
+        _iterator11.e(err);
       } finally {
-        _iterator9.f();
+        _iterator11.f();
       }
 
       return options;
@@ -58354,7 +58518,8 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "onAddTeamSelected",
     value: function onAddTeamSelected(selected) {
-      this.poolData.teamData.splice(0, 0, {
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      poolData.teamData.splice(0, 0, {
         players: selected.value,
         judgeData: {}
       });
@@ -58362,43 +58527,81 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "onRemoveNewTeam",
     value: function onRemoveNewTeam(index) {
-      this.poolData.teamData.splice(index, 1);
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      poolData.teamData.splice(index, 1);
     }
   }, {
     key: "moveTeam",
     value: function moveTeam(index, dir) {
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
       var newIndex = index + dir;
 
-      if (newIndex < 0 || newIndex >= this.poolData.teamData.length) {
+      if (newIndex < 0 || newIndex >= poolData.teamData.length) {
         return;
       }
 
-      var temp = this.poolData.teamData[newIndex];
-      this.poolData.teamData[newIndex] = this.poolData.teamData[index];
-      this.poolData.teamData[index] = temp;
+      var temp = poolData.teamData[newIndex];
+      poolData.teamData[newIndex] = poolData.teamData[index];
+      poolData.teamData[index] = temp;
     }
   }, {
     key: "getTeamsWidget",
     value: function getTeamsWidget() {
-      var _this21 = this;
+      var _this23 = this;
 
-      var widgets = this.poolData.teamData.map(function (teamData, index) {
-        return /*#__PURE__*/React.createElement("div", {
-          key: Math.random(),
-          className: "team"
-        }, /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this21.onRemoveNewTeam(index);
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]; // Does not support ties
+
+      var sortedScores = [];
+
+      var _iterator13 = _createForOfIteratorHelper(poolData.teamData),
+          _step13;
+
+      try {
+        for (_iterator13.s(); !(_step13 = _iterator13.n()).done;) {
+          var teamData = _step13.value;
+
+          if (teamData.teamScore !== undefined) {
+            sortedScores.push(teamData.teamScore);
           }
-        }, "X"), "".concat(index + 1, ". ").concat(Common.getPlayerNamesString(teamData.players)), /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this21.moveTeam(index, -1);
-          }
-        }, "^"), /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this21.moveTeam(index, 1);
-          }
-        }, "v"));
+        }
+      } catch (err) {
+        _iterator13.e(err);
+      } finally {
+        _iterator13.f();
+      }
+
+      sortedScores.sort(function (a, b) {
+        return b - a;
+      });
+      var widgets = poolData.teamData.map(function (teamData, index) {
+        var sortedScoreIndex = sortedScores.findIndex(function (score) {
+          return score === teamData.teamScore;
+        });
+        var teamRank = sortedScoreIndex >= 0 ? sortedScoreIndex + 1 : undefined;
+
+        if (teamRank !== undefined) {
+          return /*#__PURE__*/React.createElement("div", {
+            key: Math.random(),
+            className: "team"
+          }, "".concat(index + 1, ". ").concat(Common.getPlayerNamesString(teamData.players), " (").concat(Common.getPlaceFromNumber(teamRank), ")"));
+        } else {
+          return /*#__PURE__*/React.createElement("div", {
+            key: Math.random(),
+            className: "team"
+          }, /*#__PURE__*/React.createElement("button", {
+            onClick: function onClick() {
+              return _this23.onRemoveNewTeam(index);
+            }
+          }, "X"), "".concat(index + 1, ". ").concat(Common.getPlayerNamesString(teamData.players)), /*#__PURE__*/React.createElement("button", {
+            onClick: function onClick() {
+              return _this23.moveTeam(index, -1);
+            }
+          }, "^"), /*#__PURE__*/React.createElement("button", {
+            onClick: function onClick() {
+              return _this23.moveTeam(index, 1);
+            }
+          }, "v"));
+        }
       });
       return /*#__PURE__*/React.createElement("div", {
         className: "teams"
@@ -58407,7 +58610,8 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "onAddJudge",
     value: function onAddJudge(playerKey, category) {
-      this.poolData.judges[playerKey] = category;
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      poolData.judges[playerKey] = category;
     }
   }, {
     key: "onSelectJudgesClick",
@@ -58418,13 +58622,14 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "getJudgeSelectWidget",
     value: function getJudgeSelectWidget() {
-      var _this22 = this;
+      var _this24 = this;
 
       var judgeWidgets = [];
       var filteredPlayerKeys = [];
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
 
       for (var playerKey in MainStore.eventData.eventData.playerData) {
-        if (!Common.poolDataContainsCompetitor(this.poolData, playerKey) && !Common.poolDataContainsJudge(this.poolData, playerKey)) {
+        if (!Common.poolDataContainsCompetitor(poolData, playerKey) && !Common.poolDataContainsJudge(poolData, playerKey)) {
           filteredPlayerKeys.push(playerKey);
         }
       }
@@ -58434,9 +58639,9 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
       });
 
       var _loop4 = function _loop4() {
-        var playerKey = _filteredPlayerKeys[_i];
+        var playerKey = _filteredPlayerKeys[_i2];
         var playerData = MainStore.playerData[playerKey];
-        var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, _this22.props.divisionName, _this22.props.roundData.name, _this22.props.poolName);
+        var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, _this24.props.divisionName, _this24.props.roundData.name, _this24.props.poolName);
         var title = isPlayingInOtherPool ? "Playing in other Pool" : undefined;
         var cn = "judge ".concat(isPlayingInOtherPool ? "playingInOtherPool" : "");
         judgeWidgets.push( /*#__PURE__*/React.createElement("div", {
@@ -58445,15 +58650,15 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
           title: title
         }, /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this22.onAddJudge(playerKey, "Diff");
+            return _this24.onAddJudge(playerKey, "Diff");
           }
         }, "Diff"), /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this22.onAddJudge(playerKey, "Variety");
+            return _this24.onAddJudge(playerKey, "Variety");
           }
         }, "Variety"), /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this22.onAddJudge(playerKey, "ExAi");
+            return _this24.onAddJudge(playerKey, "ExAi");
           }
         }, "ExAi"), /*#__PURE__*/React.createElement("div", {
           className: "name"
@@ -58464,7 +58669,7 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
         }, Common.getPlayerJudgedCount(playerKey))));
       };
 
-      for (var _i = 0, _filteredPlayerKeys = filteredPlayerKeys; _i < _filteredPlayerKeys.length; _i++) {
+      for (var _i2 = 0, _filteredPlayerKeys = filteredPlayerKeys; _i2 < _filteredPlayerKeys.length; _i2++) {
         _loop4();
       }
 
@@ -58472,14 +58677,14 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
         return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           className: "selectJudges",
           onClick: function onClick() {
-            return _this22.onSelectJudgesClick();
+            return _this24.onSelectJudgesClick();
           }
         }, "Select Judges"), /*#__PURE__*/React.createElement("div", null, judgeWidgets));
       } else {
         return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           className: "selectJudges",
           onClick: function onClick() {
-            return _this22.onSelectJudgesClick();
+            return _this24.onSelectJudgesClick();
           }
         }, "Select Judges"));
       }
@@ -58487,17 +58692,19 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "removeJudge",
     value: function removeJudge(judgeKey) {
-      delete this.poolData.judges[judgeKey];
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      delete poolData.judges[judgeKey];
     }
   }, {
     key: "getJudgesWidget",
     value: function getJudgesWidget() {
-      var _this23 = this;
+      var _this25 = this;
 
-      var judgeKeys = Common.getSortedJudgeKeyArray(this.poolData);
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      var judgeKeys = Common.getSortedJudgeKeyArray(poolData);
       var judgeWidgets = judgeKeys.map(function (key) {
-        var category = _this23.poolData.judges[key];
-        var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, _this23.props.divisionName, _this23.props.roundData.name, _this23.props.poolName);
+        var category = poolData.judges[key];
+        var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, _this25.props.divisionName, _this25.props.roundData.name, _this25.props.poolName);
         var cn = isPlayingInOtherPool ? "playingInOtherPool" : "";
         var title = isPlayingInOtherPool ? "Playing in other Pool" : undefined;
         return /*#__PURE__*/React.createElement("div", {
@@ -58506,7 +58713,7 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
           title: title
         }, /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this23.removeJudge(key);
+            return _this25.removeJudge(key);
           }
         }, "X"), "".concat(category, ": ").concat(Common.getPlayerNameString(key), " (").concat(Common.getPlayerJudgedCount(key), ")"));
       });
@@ -58515,10 +58722,10 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "onDeletePool",
     value: function onDeletePool() {
-      var _this24 = this;
+      var _this26 = this;
 
       var index = this.props.roundData.poolNames.findIndex(function (name) {
-        return name === _this24.props.poolName;
+        return name === _this26.props.poolName;
       });
       this.props.roundData.poolNames.splice(index, 1);
       delete MainStore.eventData.eventData.poolMap[this.props.poolKey];
@@ -58526,13 +58733,13 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   }, {
     key: "render",
     value: function render() {
-      var _this25 = this;
+      var _this27 = this;
 
       return /*#__PURE__*/React.createElement("div", {
         className: "poolWidget"
       }, "".concat(this.props.divisionName, " ").concat(this.props.roundData.name, " ").concat(this.props.poolName), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
-          return _this25.onDeletePool();
+          return _this27.onDeletePool();
         }
       }, "Delete Pool"), /*#__PURE__*/React.createElement("h3", null, "Teams"), /*#__PURE__*/React.createElement("div", {
         className: "addTeamWidget"
@@ -58540,7 +58747,7 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
         value: null,
         options: this.getAddTeamOptions(),
         onChange: function onChange(e) {
-          return _this25.onAddTeamSelected(e);
+          return _this27.onAddTeamSelected(e);
         }
       }), this.getTeamsWidget()), /*#__PURE__*/React.createElement("div", {
         className: "judgeWidget"
