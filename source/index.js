@@ -586,8 +586,6 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
                 }
             })
 
-            console.log(sortedTeams.map((team) => Common.getPlayerNamesString(team.players)))
-
             return sortedTeams.map((teamData) => {
                 return teamData.players
             })
