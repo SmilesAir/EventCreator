@@ -2383,7 +2383,7 @@ __webpack_require__.r(__webpack_exports__);
 
 var pkg = {
 	name: "@emotion/react",
-	version: "11.10.5",
+	version: "11.10.6",
 	main: "dist/emotion-react.cjs.js",
 	module: "dist/emotion-react.esm.js",
 	browser: {
@@ -2446,7 +2446,7 @@ var pkg = {
 	},
 	dependencies: {
 		"@babel/runtime": "^7.18.3",
-		"@emotion/babel-plugin": "^11.10.5",
+		"@emotion/babel-plugin": "^11.10.6",
 		"@emotion/cache": "^11.10.5",
 		"@emotion/serialize": "^1.1.1",
 		"@emotion/use-insertion-effect-with-fallbacks": "^1.0.0",
@@ -2455,24 +2455,19 @@ var pkg = {
 		"hoist-non-react-statics": "^3.3.1"
 	},
 	peerDependencies: {
-		"@babel/core": "^7.0.0",
 		react: ">=16.8.0"
 	},
 	peerDependenciesMeta: {
-		"@babel/core": {
-			optional: true
-		},
 		"@types/react": {
 			optional: true
 		}
 	},
 	devDependencies: {
-		"@babel/core": "^7.18.5",
 		"@definitelytyped/dtslint": "0.0.112",
-		"@emotion/css": "11.10.5",
+		"@emotion/css": "11.10.6",
 		"@emotion/css-prettifier": "1.1.1",
 		"@emotion/server": "11.10.0",
-		"@emotion/styled": "11.10.5",
+		"@emotion/styled": "11.10.6",
 		"html-tag-names": "^1.1.2",
 		react: "16.14.0",
 		"svg-tag-names": "^1.1.1",
@@ -3697,13 +3692,13 @@ function rectToClientRect(rect) {
 
 /**
  * Resolves with an object of overflow side offsets that determine how much the
- * element is overflowing a given clipping boundary.
+ * element is overflowing a given clipping boundary on each side.
  * - positive = overflowing the boundary by that number of pixels
  * - negative = how many pixels left before it will overflow
  * - 0 = lies flush with the boundary
  * @see https://floating-ui.com/docs/detectOverflow
  */
-async function detectOverflow(middlewareArguments, options) {
+async function detectOverflow(state, options) {
   var _await$platform$isEle;
   if (options === void 0) {
     options = {};
@@ -3715,7 +3710,7 @@ async function detectOverflow(middlewareArguments, options) {
     rects,
     elements,
     strategy
-  } = middlewareArguments;
+  } = state;
   const {
     boundary = 'clippingAncestors',
     rootBoundary = 'viewport',
@@ -3767,14 +3762,14 @@ function within(min$1, value, max$1) {
 }
 
 /**
- * Positions an inner element of the floating element such that it is centered
- * to the reference element.
+ * Provides data to position an inner element of the floating element so that it
+ * appears centered to the reference element.
  * @see https://floating-ui.com/docs/arrow
  */
 const arrow = options => ({
   name: 'arrow',
   options,
-  async fn(middlewareArguments) {
+  async fn(state) {
     // Since `element` is required, we don't Partial<> the type.
     const {
       element,
@@ -3786,7 +3781,7 @@ const arrow = options => ({
       placement,
       rects,
       platform
-    } = middlewareArguments;
+    } = state;
     if (element == null) {
       if (true) {
         console.warn('Floating UI: No `element` was passed to the `arrow` middleware.');
@@ -3883,7 +3878,9 @@ function getPlacementList(alignment, autoAlignment, allowedPlacements) {
   });
 }
 /**
- * Automatically chooses the `placement` which has the most space available.
+ * Optimizes the visibility of the floating element by choosing the placement
+ * that has the most space available automatically, without needing to specify a
+ * preferred placement. Alternative to `flip`.
  * @see https://floating-ui.com/docs/autoPlacement
  */
 const autoPlacement = function (options) {
@@ -3893,23 +3890,24 @@ const autoPlacement = function (options) {
   return {
     name: 'autoPlacement',
     options,
-    async fn(middlewareArguments) {
-      var _middlewareData$autoP, _middlewareData$autoP2, _placementsSortedByLe;
+    async fn(state) {
+      var _middlewareData$autoP, _middlewareData$autoP2, _placementsThatFitOnE;
       const {
         rects,
         middlewareData,
         placement,
         platform,
         elements
-      } = middlewareArguments;
+      } = state;
       const {
+        crossAxis = false,
         alignment,
         allowedPlacements = allPlacements,
         autoAlignment = true,
         ...detectOverflowOptions
       } = options;
       const placements = alignment !== undefined || allowedPlacements === allPlacements ? getPlacementList(alignment || null, autoAlignment, allowedPlacements) : allowedPlacements;
-      const overflow = await detectOverflow(middlewareArguments, detectOverflowOptions);
+      const overflow = await detectOverflow(state, detectOverflowOptions);
       const currentIndex = ((_middlewareData$autoP = middlewareData.autoPlacement) == null ? void 0 : _middlewareData$autoP.index) || 0;
       const currentPlacement = placements[currentIndex];
       if (currentPlacement == null) {
@@ -3947,14 +3945,19 @@ const autoPlacement = function (options) {
           }
         };
       }
-      const placementsSortedByLeastOverflow = allOverflows.slice().sort((a, b) => a.overflows[0] - b.overflows[0]);
-      const placementThatFitsOnAllSides = (_placementsSortedByLe = placementsSortedByLeastOverflow.find(_ref => {
-        let {
-          overflows
-        } = _ref;
-        return overflows.every(overflow => overflow <= 0);
-      })) == null ? void 0 : _placementsSortedByLe.placement;
-      const resetPlacement = placementThatFitsOnAllSides || placementsSortedByLeastOverflow[0].placement;
+      const placementsSortedByMostSpace = allOverflows.map(d => {
+        const alignment = getAlignment(d.placement);
+        return [d.placement, alignment && crossAxis ?
+        // Check along the mainAxis and main crossAxis side.
+        d.overflows.slice(0, 2).reduce((acc, v) => acc + v, 0) :
+        // Check only the mainAxis.
+        d.overflows[0], d.overflows];
+      }).sort((a, b) => a[1] - b[1]);
+      const placementsThatFitOnEachSide = placementsSortedByMostSpace.filter(d => d[2].slice(0,
+      // Aligned placements should not check their opposite crossAxis
+      // side.
+      getAlignment(d[0]) ? 2 : 3).every(v => v <= 0));
+      const resetPlacement = ((_placementsThatFitOnE = placementsThatFitOnEachSide[0]) == null ? void 0 : _placementsThatFitOnE[0]) || placementsSortedByMostSpace[0][0];
       if (resetPlacement !== placement) {
         return {
           data: {
@@ -4006,8 +4009,9 @@ function getOppositeAxisPlacements(placement, flipAlignment, direction, rtl) {
 }
 
 /**
- * Changes the placement of the floating element to one that will fit if the
- * initially specified `placement` does not.
+ * Optimizes the visibility of the floating element by flipping the `placement`
+ * in order to keep it in view when the preferred placement(s) will overflow the
+ * clipping boundary. Alternative to `autoPlacement`.
  * @see https://floating-ui.com/docs/flip
  */
 const flip = function (options) {
@@ -4017,7 +4021,7 @@ const flip = function (options) {
   return {
     name: 'flip',
     options,
-    async fn(middlewareArguments) {
+    async fn(state) {
       var _middlewareData$flip;
       const {
         placement,
@@ -4026,7 +4030,7 @@ const flip = function (options) {
         initialPlacement,
         platform,
         elements
-      } = middlewareArguments;
+      } = state;
       const {
         mainAxis: checkMainAxis = true,
         crossAxis: checkCrossAxis = true,
@@ -4044,7 +4048,7 @@ const flip = function (options) {
         fallbackPlacements.push(...getOppositeAxisPlacements(initialPlacement, flipAlignment, fallbackAxisSideDirection, rtl));
       }
       const placements = [initialPlacement, ...fallbackPlacements];
-      const overflow = await detectOverflow(middlewareArguments, detectOverflowOptions);
+      const overflow = await detectOverflow(state, detectOverflowOptions);
       const overflows = [];
       let overflowsData = ((_middlewareData$flip = middlewareData.flip) == null ? void 0 : _middlewareData$flip.overflows) || [];
       if (checkMainAxis) {
@@ -4064,7 +4068,7 @@ const flip = function (options) {
 
       // One or more sides is overflowing.
       if (!overflows.every(side => side <= 0)) {
-        var _middlewareData$flip2;
+        var _middlewareData$flip2, _overflowsData$filter;
         const nextIndex = (((_middlewareData$flip2 = middlewareData.flip) == null ? void 0 : _middlewareData$flip2.index) || 0) + 1;
         const nextPlacement = placements[nextIndex];
         if (nextPlacement) {
@@ -4079,20 +4083,27 @@ const flip = function (options) {
             }
           };
         }
-        let resetPlacement = 'bottom';
-        switch (fallbackStrategy) {
-          case 'bestFit':
-            {
-              var _overflowsData$map$so;
-              const placement = (_overflowsData$map$so = overflowsData.map(d => [d, d.overflows.filter(overflow => overflow > 0).reduce((acc, overflow) => acc + overflow, 0)]).sort((a, b) => a[1] - b[1])[0]) == null ? void 0 : _overflowsData$map$so[0].placement;
-              if (placement) {
-                resetPlacement = placement;
+
+        // First, find the candidates that fit on the mainAxis side of overflow,
+        // then find the placement that fits the best on the main crossAxis side.
+        let resetPlacement = (_overflowsData$filter = overflowsData.filter(d => d.overflows[0] <= 0).sort((a, b) => a.overflows[1] - b.overflows[1])[0]) == null ? void 0 : _overflowsData$filter.placement;
+
+        // Otherwise fallback.
+        if (!resetPlacement) {
+          switch (fallbackStrategy) {
+            case 'bestFit':
+              {
+                var _overflowsData$map$so;
+                const placement = (_overflowsData$map$so = overflowsData.map(d => [d.placement, d.overflows.filter(overflow => overflow > 0).reduce((acc, overflow) => acc + overflow, 0)]).sort((a, b) => a[1] - b[1])[0]) == null ? void 0 : _overflowsData$map$so[0];
+                if (placement) {
+                  resetPlacement = placement;
+                }
+                break;
               }
+            case 'initialPlacement':
+              resetPlacement = initialPlacement;
               break;
-            }
-          case 'initialPlacement':
-            resetPlacement = initialPlacement;
-            break;
+          }
         }
         if (placement !== resetPlacement) {
           return {
@@ -4130,18 +4141,18 @@ const hide = function (options) {
   return {
     name: 'hide',
     options,
-    async fn(middlewareArguments) {
+    async fn(state) {
       const {
         strategy = 'referenceHidden',
         ...detectOverflowOptions
       } = options;
       const {
         rects
-      } = middlewareArguments;
+      } = state;
       switch (strategy) {
         case 'referenceHidden':
           {
-            const overflow = await detectOverflow(middlewareArguments, {
+            const overflow = await detectOverflow(state, {
               ...detectOverflowOptions,
               elementContext: 'reference'
             });
@@ -4155,7 +4166,7 @@ const hide = function (options) {
           }
         case 'escaped':
           {
-            const overflow = await detectOverflow(middlewareArguments, {
+            const overflow = await detectOverflow(state, {
               ...detectOverflowOptions,
               altBoundary: true
             });
@@ -4188,14 +4199,14 @@ const inline = function (options) {
   return {
     name: 'inline',
     options,
-    async fn(middlewareArguments) {
+    async fn(state) {
       const {
         placement,
         elements,
         rects,
         platform,
         strategy
-      } = middlewareArguments;
+      } = state;
       // A MouseEvent's client{X,Y} coords can be up to 2 pixels off a
       // ClientRect's bounds, despite the event listener being triggered. A
       // padding of 2 seems to handle this issue.
@@ -4283,19 +4294,19 @@ const inline = function (options) {
   };
 };
 
-async function convertValueToCoords(middlewareArguments, value) {
+async function convertValueToCoords(state, value) {
   const {
     placement,
     platform,
     elements
-  } = middlewareArguments;
+  } = state;
   const rtl = await (platform.isRTL == null ? void 0 : platform.isRTL(elements.floating));
   const side = getSide(placement);
   const alignment = getAlignment(placement);
   const isVertical = getMainAxisFromPlacement(placement) === 'x';
   const mainAxisMulti = ['left', 'top'].includes(side) ? -1 : 1;
   const crossAxisMulti = rtl && isVertical ? -1 : 1;
-  const rawValue = typeof value === 'function' ? value(middlewareArguments) : value;
+  const rawValue = typeof value === 'function' ? value(state) : value;
 
   // eslint-disable-next-line prefer-const
   let {
@@ -4325,7 +4336,10 @@ async function convertValueToCoords(middlewareArguments, value) {
 }
 
 /**
- * Displaces the floating element from its reference element.
+ * Modifies the placement by translating the floating element along the
+ * specified axes.
+ * A number (shorthand for `mainAxis` or distance), or an axes configuration
+ * object may be passed.
  * @see https://floating-ui.com/docs/offset
  */
 const offset = function (value) {
@@ -4335,12 +4349,12 @@ const offset = function (value) {
   return {
     name: 'offset',
     options: value,
-    async fn(middlewareArguments) {
+    async fn(state) {
       const {
         x,
         y
-      } = middlewareArguments;
-      const diffCoords = await convertValueToCoords(middlewareArguments, value);
+      } = state;
+      const diffCoords = await convertValueToCoords(state, value);
       return {
         x: x + diffCoords.x,
         y: y + diffCoords.y,
@@ -4355,8 +4369,8 @@ function getCrossAxis(axis) {
 }
 
 /**
- * Shifts the floating element in order to keep it in view when it will overflow
- * a clipping boundary.
+ * Optimizes the visibility of the floating element by shifting it in order to
+ * keep it in view when it will overflow the clipping boundary.
  * @see https://floating-ui.com/docs/shift
  */
 const shift = function (options) {
@@ -4366,12 +4380,12 @@ const shift = function (options) {
   return {
     name: 'shift',
     options,
-    async fn(middlewareArguments) {
+    async fn(state) {
       const {
         x,
         y,
         placement
-      } = middlewareArguments;
+      } = state;
       const {
         mainAxis: checkMainAxis = true,
         crossAxis: checkCrossAxis = false,
@@ -4393,7 +4407,7 @@ const shift = function (options) {
         x,
         y
       };
-      const overflow = await detectOverflow(middlewareArguments, detectOverflowOptions);
+      const overflow = await detectOverflow(state, detectOverflowOptions);
       const mainAxis = getMainAxisFromPlacement(getSide(placement));
       const crossAxis = getCrossAxis(mainAxis);
       let mainAxisCoord = coords[mainAxis];
@@ -4413,7 +4427,7 @@ const shift = function (options) {
         crossAxisCoord = within(min, crossAxisCoord, max);
       }
       const limitedCoords = limiter.fn({
-        ...middlewareArguments,
+        ...state,
         [mainAxis]: mainAxisCoord,
         [crossAxis]: crossAxisCoord
       });
@@ -4436,14 +4450,14 @@ const limitShift = function (options) {
   }
   return {
     options,
-    fn(middlewareArguments) {
+    fn(state) {
       const {
         x,
         y,
         placement,
         rects,
         middlewareData
-      } = middlewareArguments;
+      } = state;
       const {
         offset = 0,
         mainAxis: checkMainAxis = true,
@@ -4457,7 +4471,7 @@ const limitShift = function (options) {
       const crossAxis = getCrossAxis(mainAxis);
       let mainAxisCoord = coords[mainAxis];
       let crossAxisCoord = coords[crossAxis];
-      const rawOffset = typeof offset === 'function' ? offset(middlewareArguments) : offset;
+      const rawOffset = typeof offset === 'function' ? offset(state) : offset;
       const computedOffset = typeof rawOffset === 'number' ? {
         mainAxis: rawOffset,
         crossAxis: 0
@@ -4497,9 +4511,9 @@ const limitShift = function (options) {
 };
 
 /**
- * Provides data to change the size of the floating element. For instance,
- * prevent it from overflowing its clipping boundary or match the width of the
- * reference element.
+ * Provides data that allows you to change the size of the floating element —
+ * for instance, prevent it from overflowing the clipping boundary or match the
+ * width of the reference element.
  * @see https://floating-ui.com/docs/size
  */
 const size = function (options) {
@@ -4509,20 +4523,26 @@ const size = function (options) {
   return {
     name: 'size',
     options,
-    async fn(middlewareArguments) {
+    async fn(state) {
       const {
         placement,
         rects,
         platform,
         elements
-      } = middlewareArguments;
+      } = state;
       const {
         apply = () => {},
         ...detectOverflowOptions
       } = options;
-      const overflow = await detectOverflow(middlewareArguments, detectOverflowOptions);
+      const overflow = await detectOverflow(state, detectOverflowOptions);
       const side = getSide(placement);
       const alignment = getAlignment(placement);
+      const axis = getMainAxisFromPlacement(placement);
+      const isXAxis = axis === 'x';
+      const {
+        width,
+        height
+      } = rects.floating;
       let heightSide;
       let widthSide;
       if (side === 'top' || side === 'bottom') {
@@ -4532,20 +4552,37 @@ const size = function (options) {
         widthSide = side;
         heightSide = alignment === 'end' ? 'top' : 'bottom';
       }
-      const xMin = max(overflow.left, 0);
-      const xMax = max(overflow.right, 0);
-      const yMin = max(overflow.top, 0);
-      const yMax = max(overflow.bottom, 0);
-      const dimensions = {
-        availableHeight: rects.floating.height - (['left', 'right'].includes(placement) ? 2 * (yMin !== 0 || yMax !== 0 ? yMin + yMax : max(overflow.top, overflow.bottom)) : overflow[heightSide]),
-        availableWidth: rects.floating.width - (['top', 'bottom'].includes(placement) ? 2 * (xMin !== 0 || xMax !== 0 ? xMin + xMax : max(overflow.left, overflow.right)) : overflow[widthSide])
-      };
+      const overflowAvailableHeight = height - overflow[heightSide];
+      const overflowAvailableWidth = width - overflow[widthSide];
+      let availableHeight = overflowAvailableHeight;
+      let availableWidth = overflowAvailableWidth;
+      if (isXAxis) {
+        availableWidth = min(
+        // Maximum clipping viewport width
+        width - overflow.right - overflow.left, overflowAvailableWidth);
+      } else {
+        availableHeight = min(
+        // Maximum clipping viewport height
+        height - overflow.bottom - overflow.top, overflowAvailableHeight);
+      }
+      if (!state.middlewareData.shift && !alignment) {
+        const xMin = max(overflow.left, 0);
+        const xMax = max(overflow.right, 0);
+        const yMin = max(overflow.top, 0);
+        const yMax = max(overflow.bottom, 0);
+        if (isXAxis) {
+          availableWidth = width - 2 * (xMin !== 0 || xMax !== 0 ? xMin + xMax : max(overflow.left, overflow.right));
+        } else {
+          availableHeight = height - 2 * (yMin !== 0 || yMax !== 0 ? yMin + yMax : max(overflow.top, overflow.bottom));
+        }
+      }
       await apply({
-        ...middlewareArguments,
-        ...dimensions
+        ...state,
+        availableWidth,
+        availableHeight
       });
       const nextDimensions = await platform.getDimensions(elements.floating);
-      if (rects.floating.width !== nextDimensions.width || rects.floating.height !== nextDimensions.height) {
+      if (width !== nextDimensions.width || height !== nextDimensions.height) {
         return {
           reset: {
             rects: true
@@ -4608,6 +4645,28 @@ function getComputedStyle$1(element) {
   return getWindow(element).getComputedStyle(element);
 }
 
+const min = Math.min;
+const max = Math.max;
+const round = Math.round;
+
+function getCssDimensions(element) {
+  const css = getComputedStyle$1(element);
+  let width = parseFloat(css.width);
+  let height = parseFloat(css.height);
+  const offsetWidth = element.offsetWidth;
+  const offsetHeight = element.offsetHeight;
+  const shouldFallback = round(width) !== offsetWidth || round(height) !== offsetHeight;
+  if (shouldFallback) {
+    width = offsetWidth;
+    height = offsetHeight;
+  }
+  return {
+    width,
+    height,
+    fallback: shouldFallback
+  };
+}
+
 function getNodeName(node) {
   return isNode(node) ? (node.nodeName || '').toLowerCase() : '';
 }
@@ -4635,7 +4694,7 @@ function isNode(value) {
   return value instanceof getWindow(value).Node;
 }
 function isShadowRoot(node) {
-  // Browsers without `ShadowRoot` support
+  // Browsers without `ShadowRoot` support.
   if (typeof ShadowRoot === 'undefined') {
     return false;
   }
@@ -4655,7 +4714,7 @@ function isTableElement(element) {
   return ['table', 'td', 'th'].includes(getNodeName(element));
 }
 function isContainingBlock(element) {
-  // TODO: Try and use feature detection here instead
+  // TODO: Try to use feature detection here instead.
   const isFirefox = /firefox/i.test(getUAString());
   const css = getComputedStyle$1(element);
   const backdropFilter = css.backdropFilter || css.WebkitBackdropFilter;
@@ -4663,47 +4722,31 @@ function isContainingBlock(element) {
   // This is non-exhaustive but covers the most common CSS properties that
   // create a containing block.
   // https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block#identifying_the_containing_block
-  return css.transform !== 'none' || css.perspective !== 'none' || (backdropFilter ? backdropFilter !== 'none' : false) || isFirefox && css.willChange === 'filter' || isFirefox && (css.filter ? css.filter !== 'none' : false) || ['transform', 'perspective'].some(value => css.willChange.includes(value)) || ['paint', 'layout', 'strict', 'content'].some(
-  // TS 4.1 compat
-  value => {
+  return css.transform !== 'none' || css.perspective !== 'none' || (backdropFilter ? backdropFilter !== 'none' : false) || isFirefox && css.willChange === 'filter' || isFirefox && (css.filter ? css.filter !== 'none' : false) || ['transform', 'perspective'].some(value => css.willChange.includes(value)) || ['paint', 'layout', 'strict', 'content'].some(value => {
+    // Add type check for old browsers.
     const contain = css.contain;
     return contain != null ? contain.includes(value) : false;
   });
 }
-function isLayoutViewport() {
-  // Not Safari
-  return !/^((?!chrome|android).)*safari/i.test(getUAString());
-  // Feature detection for this fails in various ways
-  // • Always-visible scrollbar or not
-  // • Width of <html>, etc.
-  // const vV = win.visualViewport;
-  // return vV ? Math.abs(win.innerWidth / vV.scale - vV.width) < 0.5 : true;
-}
 
+/**
+ * Determines whether or not `.getBoundingClientRect()` is affected by visual
+ * viewport offsets. In Safari, the `x`/`y` offsets are values relative to the
+ * visual viewport, while in other engines, they are values relative to the
+ * layout viewport.
+ */
+function isClientRectVisualViewportBased() {
+  // TODO: Try to use feature detection here instead. Feature detection for
+  // this can fail in various ways, making the userAgent check the most
+  // reliable:
+  // • Always-visible scrollbar or not
+  // • Width of <html>
+
+  // Is Safari.
+  return /^((?!chrome|android).)*safari/i.test(getUAString());
+}
 function isLastTraversableNode(node) {
   return ['html', 'body', '#document'].includes(getNodeName(node));
-}
-
-const min = Math.min;
-const max = Math.max;
-const round = Math.round;
-
-function getCssDimensions(element) {
-  const css = getComputedStyle$1(element);
-  let width = parseFloat(css.width);
-  let height = parseFloat(css.height);
-  const offsetWidth = element.offsetWidth;
-  const offsetHeight = element.offsetHeight;
-  const shouldFallback = round(width) !== offsetWidth || round(height) !== offsetHeight;
-  if (shouldFallback) {
-    width = offsetWidth;
-    height = offsetHeight;
-  }
-  return {
-    width,
-    height,
-    fallback: shouldFallback
-  };
 }
 
 function unwrapElement(element) {
@@ -4763,7 +4806,7 @@ function getBoundingClientRect(element, includeScale, isFixedStrategy, offsetPar
     }
   }
   const win = domElement ? getWindow(domElement) : window;
-  const addVisualOffsets = !isLayoutViewport() && isFixedStrategy;
+  const addVisualOffsets = isClientRectVisualViewportBased() && isFixedStrategy;
   let x = (clientRect.left + (addVisualOffsets ? ((_win$visualViewport = win.visualViewport) == null ? void 0 : _win$visualViewport.offsetLeft) || 0 : 0)) / scale.x;
   let y = (clientRect.top + (addVisualOffsets ? ((_win$visualViewport2 = win.visualViewport) == null ? void 0 : _win$visualViewport2.offsetTop) || 0 : 0)) / scale.y;
   let width = clientRect.width / scale.x;
@@ -4816,10 +4859,290 @@ function getNodeScroll(element) {
   };
 }
 
+function convertOffsetParentRelativeRectToViewportRelativeRect(_ref) {
+  let {
+    rect,
+    offsetParent,
+    strategy
+  } = _ref;
+  const isOffsetParentAnElement = isHTMLElement(offsetParent);
+  const documentElement = getDocumentElement(offsetParent);
+  if (offsetParent === documentElement) {
+    return rect;
+  }
+  let scroll = {
+    scrollLeft: 0,
+    scrollTop: 0
+  };
+  let scale = {
+    x: 1,
+    y: 1
+  };
+  const offsets = {
+    x: 0,
+    y: 0
+  };
+  if (isOffsetParentAnElement || !isOffsetParentAnElement && strategy !== 'fixed') {
+    if (getNodeName(offsetParent) !== 'body' || isOverflowElement(documentElement)) {
+      scroll = getNodeScroll(offsetParent);
+    }
+    if (isHTMLElement(offsetParent)) {
+      const offsetRect = getBoundingClientRect(offsetParent);
+      scale = getScale(offsetParent);
+      offsets.x = offsetRect.x + offsetParent.clientLeft;
+      offsets.y = offsetRect.y + offsetParent.clientTop;
+    }
+  }
+  return {
+    width: rect.width * scale.x,
+    height: rect.height * scale.y,
+    x: rect.x * scale.x - scroll.scrollLeft * scale.x + offsets.x,
+    y: rect.y * scale.y - scroll.scrollTop * scale.y + offsets.y
+  };
+}
+
 function getWindowScrollBarX(element) {
   // If <html> has a CSS width greater than the viewport, then this will be
   // incorrect for RTL.
   return getBoundingClientRect(getDocumentElement(element)).left + getNodeScroll(element).scrollLeft;
+}
+
+// Gets the entire size of the scrollable document area, even extending outside
+// of the `<html>` and `<body>` rect bounds if horizontally scrollable.
+function getDocumentRect(element) {
+  const html = getDocumentElement(element);
+  const scroll = getNodeScroll(element);
+  const body = element.ownerDocument.body;
+  const width = max(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
+  const height = max(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
+  let x = -scroll.scrollLeft + getWindowScrollBarX(element);
+  const y = -scroll.scrollTop;
+  if (getComputedStyle$1(body).direction === 'rtl') {
+    x += max(html.clientWidth, body.clientWidth) - width;
+  }
+  return {
+    width,
+    height,
+    x,
+    y
+  };
+}
+
+function getParentNode(node) {
+  if (getNodeName(node) === 'html') {
+    return node;
+  }
+  const result =
+  // Step into the shadow DOM of the parent of a slotted node.
+  node.assignedSlot ||
+  // DOM Element detected.
+  node.parentNode ||
+  // ShadowRoot detected.
+  isShadowRoot(node) && node.host ||
+  // Fallback.
+  getDocumentElement(node);
+  return isShadowRoot(result) ? result.host : result;
+}
+
+function getNearestOverflowAncestor(node) {
+  const parentNode = getParentNode(node);
+  if (isLastTraversableNode(parentNode)) {
+    // `getParentNode` will never return a `Document` due to the fallback
+    // check, so it's either the <html> or <body> element.
+    return parentNode.ownerDocument.body;
+  }
+  if (isHTMLElement(parentNode) && isOverflowElement(parentNode)) {
+    return parentNode;
+  }
+  return getNearestOverflowAncestor(parentNode);
+}
+
+function getOverflowAncestors(node, list) {
+  var _node$ownerDocument;
+  if (list === void 0) {
+    list = [];
+  }
+  const scrollableAncestor = getNearestOverflowAncestor(node);
+  const isBody = scrollableAncestor === ((_node$ownerDocument = node.ownerDocument) == null ? void 0 : _node$ownerDocument.body);
+  const win = getWindow(scrollableAncestor);
+  if (isBody) {
+    return list.concat(win, win.visualViewport || [], isOverflowElement(scrollableAncestor) ? scrollableAncestor : []);
+  }
+  return list.concat(scrollableAncestor, getOverflowAncestors(scrollableAncestor));
+}
+
+function getViewportRect(element, strategy) {
+  const win = getWindow(element);
+  const html = getDocumentElement(element);
+  const visualViewport = win.visualViewport;
+  let width = html.clientWidth;
+  let height = html.clientHeight;
+  let x = 0;
+  let y = 0;
+  if (visualViewport) {
+    width = visualViewport.width;
+    height = visualViewport.height;
+    const visualViewportBased = isClientRectVisualViewportBased();
+    if (!visualViewportBased || visualViewportBased && strategy === 'fixed') {
+      x = visualViewport.offsetLeft;
+      y = visualViewport.offsetTop;
+    }
+  }
+  return {
+    width,
+    height,
+    x,
+    y
+  };
+}
+
+// Returns the inner client rect, subtracting scrollbars if present.
+function getInnerBoundingClientRect(element, strategy) {
+  const clientRect = getBoundingClientRect(element, true, strategy === 'fixed');
+  const top = clientRect.top + element.clientTop;
+  const left = clientRect.left + element.clientLeft;
+  const scale = isHTMLElement(element) ? getScale(element) : {
+    x: 1,
+    y: 1
+  };
+  const width = element.clientWidth * scale.x;
+  const height = element.clientHeight * scale.y;
+  const x = left * scale.x;
+  const y = top * scale.y;
+  return {
+    width,
+    height,
+    x,
+    y
+  };
+}
+function getClientRectFromClippingAncestor(element, clippingAncestor, strategy) {
+  let rect;
+  if (clippingAncestor === 'viewport') {
+    rect = getViewportRect(element, strategy);
+  } else if (clippingAncestor === 'document') {
+    rect = getDocumentRect(getDocumentElement(element));
+  } else if (isElement(clippingAncestor)) {
+    rect = getInnerBoundingClientRect(clippingAncestor, strategy);
+  } else {
+    const mutableRect = {
+      ...clippingAncestor
+    };
+    if (isClientRectVisualViewportBased()) {
+      var _win$visualViewport, _win$visualViewport2;
+      const win = getWindow(element);
+      mutableRect.x -= ((_win$visualViewport = win.visualViewport) == null ? void 0 : _win$visualViewport.offsetLeft) || 0;
+      mutableRect.y -= ((_win$visualViewport2 = win.visualViewport) == null ? void 0 : _win$visualViewport2.offsetTop) || 0;
+    }
+    rect = mutableRect;
+  }
+  return Object(_floating_ui_core__WEBPACK_IMPORTED_MODULE_0__["rectToClientRect"])(rect);
+}
+
+// A "clipping ancestor" is an `overflow` element with the characteristic of
+// clipping (or hiding) child elements. This returns all clipping ancestors
+// of the given element up the tree.
+function getClippingElementAncestors(element, cache) {
+  const cachedResult = cache.get(element);
+  if (cachedResult) {
+    return cachedResult;
+  }
+  let result = getOverflowAncestors(element).filter(el => isElement(el) && getNodeName(el) !== 'body');
+  let currentContainingBlockComputedStyle = null;
+  const elementIsFixed = getComputedStyle$1(element).position === 'fixed';
+  let currentNode = elementIsFixed ? getParentNode(element) : element;
+
+  // https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block#identifying_the_containing_block
+  while (isElement(currentNode) && !isLastTraversableNode(currentNode)) {
+    const computedStyle = getComputedStyle$1(currentNode);
+    const containingBlock = isContainingBlock(currentNode);
+    const shouldIgnoreCurrentNode = computedStyle.position === 'fixed';
+    if (shouldIgnoreCurrentNode) {
+      currentContainingBlockComputedStyle = null;
+    } else {
+      const shouldDropCurrentNode = elementIsFixed ? !containingBlock && !currentContainingBlockComputedStyle : !containingBlock && computedStyle.position === 'static' && !!currentContainingBlockComputedStyle && ['absolute', 'fixed'].includes(currentContainingBlockComputedStyle.position);
+      if (shouldDropCurrentNode) {
+        // Drop non-containing blocks.
+        result = result.filter(ancestor => ancestor !== currentNode);
+      } else {
+        // Record last containing block for next iteration.
+        currentContainingBlockComputedStyle = computedStyle;
+      }
+    }
+    currentNode = getParentNode(currentNode);
+  }
+  cache.set(element, result);
+  return result;
+}
+
+// Gets the maximum area that the element is visible in due to any number of
+// clipping ancestors.
+function getClippingRect(_ref) {
+  let {
+    element,
+    boundary,
+    rootBoundary,
+    strategy
+  } = _ref;
+  const elementClippingAncestors = boundary === 'clippingAncestors' ? getClippingElementAncestors(element, this._c) : [].concat(boundary);
+  const clippingAncestors = [...elementClippingAncestors, rootBoundary];
+  const firstClippingAncestor = clippingAncestors[0];
+  const clippingRect = clippingAncestors.reduce((accRect, clippingAncestor) => {
+    const rect = getClientRectFromClippingAncestor(element, clippingAncestor, strategy);
+    accRect.top = max(rect.top, accRect.top);
+    accRect.right = min(rect.right, accRect.right);
+    accRect.bottom = min(rect.bottom, accRect.bottom);
+    accRect.left = max(rect.left, accRect.left);
+    return accRect;
+  }, getClientRectFromClippingAncestor(element, firstClippingAncestor, strategy));
+  return {
+    width: clippingRect.right - clippingRect.left,
+    height: clippingRect.bottom - clippingRect.top,
+    x: clippingRect.left,
+    y: clippingRect.top
+  };
+}
+
+function getDimensions(element) {
+  if (isHTMLElement(element)) {
+    return getCssDimensions(element);
+  }
+  return element.getBoundingClientRect();
+}
+
+function getTrueOffsetParent(element, polyfill) {
+  if (!isHTMLElement(element) || getComputedStyle$1(element).position === 'fixed') {
+    return null;
+  }
+  if (polyfill) {
+    return polyfill(element);
+  }
+  return element.offsetParent;
+}
+function getContainingBlock(element) {
+  let currentNode = getParentNode(element);
+  while (isHTMLElement(currentNode) && !isLastTraversableNode(currentNode)) {
+    if (isContainingBlock(currentNode)) {
+      return currentNode;
+    } else {
+      currentNode = getParentNode(currentNode);
+    }
+  }
+  return null;
+}
+
+// Gets the closest ancestor positioned element. Handles some edge cases,
+// such as table ancestors and cross browser bugs.
+function getOffsetParent(element, polyfill) {
+  const window = getWindow(element);
+  let offsetParent = getTrueOffsetParent(element, polyfill);
+  while (offsetParent && isTableElement(offsetParent) && getComputedStyle$1(offsetParent).position === 'static') {
+    offsetParent = getTrueOffsetParent(offsetParent, polyfill);
+  }
+  if (offsetParent && (getNodeName(offsetParent) === 'html' || getNodeName(offsetParent) === 'body' && getComputedStyle$1(offsetParent).position === 'static' && !isContainingBlock(offsetParent))) {
+    return window;
+  }
+  return offsetParent || getContainingBlock(element) || window;
 }
 
 function getRectRelativeToOffsetParent(element, offsetParent, strategy) {
@@ -4854,271 +5177,6 @@ function getRectRelativeToOffsetParent(element, offsetParent, strategy) {
   };
 }
 
-function getParentNode(node) {
-  if (getNodeName(node) === 'html') {
-    return node;
-  }
-  const result =
-  // Step into the shadow DOM of the parent of a slotted node
-  node.assignedSlot ||
-  // DOM Element detected
-  node.parentNode || (
-  // ShadowRoot detected
-  isShadowRoot(node) ? node.host : null) ||
-  // Fallback
-  getDocumentElement(node);
-  return isShadowRoot(result) ? result.host : result;
-}
-
-function getTrueOffsetParent(element) {
-  if (!isHTMLElement(element) || getComputedStyle$1(element).position === 'fixed') {
-    return null;
-  }
-  return element.offsetParent;
-}
-function getContainingBlock(element) {
-  let currentNode = getParentNode(element);
-  while (isHTMLElement(currentNode) && !isLastTraversableNode(currentNode)) {
-    if (isContainingBlock(currentNode)) {
-      return currentNode;
-    } else {
-      currentNode = getParentNode(currentNode);
-    }
-  }
-  return null;
-}
-
-// Gets the closest ancestor positioned element. Handles some edge cases,
-// such as table ancestors and cross browser bugs.
-function getOffsetParent(element) {
-  const window = getWindow(element);
-  let offsetParent = getTrueOffsetParent(element);
-  while (offsetParent && isTableElement(offsetParent) && getComputedStyle$1(offsetParent).position === 'static') {
-    offsetParent = getTrueOffsetParent(offsetParent);
-  }
-  if (offsetParent && (getNodeName(offsetParent) === 'html' || getNodeName(offsetParent) === 'body' && getComputedStyle$1(offsetParent).position === 'static' && !isContainingBlock(offsetParent))) {
-    return window;
-  }
-  return offsetParent || getContainingBlock(element) || window;
-}
-
-function getDimensions(element) {
-  return getCssDimensions(element);
-}
-
-function convertOffsetParentRelativeRectToViewportRelativeRect(_ref) {
-  let {
-    rect,
-    offsetParent,
-    strategy
-  } = _ref;
-  const isOffsetParentAnElement = isHTMLElement(offsetParent);
-  const documentElement = getDocumentElement(offsetParent);
-  if (offsetParent === documentElement) {
-    return rect;
-  }
-  let scroll = {
-    scrollLeft: 0,
-    scrollTop: 0
-  };
-  let scale = {
-    x: 1,
-    y: 1
-  };
-  const offsets = {
-    x: 0,
-    y: 0
-  };
-  if (isOffsetParentAnElement || !isOffsetParentAnElement && strategy !== 'fixed') {
-    if (getNodeName(offsetParent) !== 'body' || isOverflowElement(documentElement)) {
-      scroll = getNodeScroll(offsetParent);
-    }
-    if (isHTMLElement(offsetParent)) {
-      const offsetRect = getBoundingClientRect(offsetParent);
-      scale = getScale(offsetParent);
-      offsets.x = offsetRect.x + offsetParent.clientLeft;
-      offsets.y = offsetRect.y + offsetParent.clientTop;
-    }
-    // This doesn't appear to need to be negated.
-    // else if (documentElement) {
-    //   offsets.x = getWindowScrollBarX(documentElement);
-    // }
-  }
-
-  return {
-    width: rect.width * scale.x,
-    height: rect.height * scale.y,
-    x: rect.x * scale.x - scroll.scrollLeft * scale.x + offsets.x,
-    y: rect.y * scale.y - scroll.scrollTop * scale.y + offsets.y
-  };
-}
-
-function getViewportRect(element, strategy) {
-  const win = getWindow(element);
-  const html = getDocumentElement(element);
-  const visualViewport = win.visualViewport;
-  let width = html.clientWidth;
-  let height = html.clientHeight;
-  let x = 0;
-  let y = 0;
-  if (visualViewport) {
-    width = visualViewport.width;
-    height = visualViewport.height;
-    const layoutViewport = isLayoutViewport();
-    if (layoutViewport || !layoutViewport && strategy === 'fixed') {
-      x = visualViewport.offsetLeft;
-      y = visualViewport.offsetTop;
-    }
-  }
-  return {
-    width,
-    height,
-    x,
-    y
-  };
-}
-
-// Gets the entire size of the scrollable document area, even extending outside
-// of the `<html>` and `<body>` rect bounds if horizontally scrollable
-function getDocumentRect(element) {
-  var _element$ownerDocumen;
-  const html = getDocumentElement(element);
-  const scroll = getNodeScroll(element);
-  const body = (_element$ownerDocumen = element.ownerDocument) == null ? void 0 : _element$ownerDocumen.body;
-  const width = max(html.scrollWidth, html.clientWidth, body ? body.scrollWidth : 0, body ? body.clientWidth : 0);
-  const height = max(html.scrollHeight, html.clientHeight, body ? body.scrollHeight : 0, body ? body.clientHeight : 0);
-  let x = -scroll.scrollLeft + getWindowScrollBarX(element);
-  const y = -scroll.scrollTop;
-  if (getComputedStyle$1(body || html).direction === 'rtl') {
-    x += max(html.clientWidth, body ? body.clientWidth : 0) - width;
-  }
-  return {
-    width,
-    height,
-    x,
-    y
-  };
-}
-
-function getNearestOverflowAncestor(node) {
-  const parentNode = getParentNode(node);
-  if (isLastTraversableNode(parentNode)) {
-    // @ts-ignore assume body is always available
-    return node.ownerDocument.body;
-  }
-  if (isHTMLElement(parentNode) && isOverflowElement(parentNode)) {
-    return parentNode;
-  }
-  return getNearestOverflowAncestor(parentNode);
-}
-
-function getOverflowAncestors(node, list) {
-  var _node$ownerDocument;
-  if (list === void 0) {
-    list = [];
-  }
-  const scrollableAncestor = getNearestOverflowAncestor(node);
-  const isBody = scrollableAncestor === ((_node$ownerDocument = node.ownerDocument) == null ? void 0 : _node$ownerDocument.body);
-  const win = getWindow(scrollableAncestor);
-  if (isBody) {
-    return list.concat(win, win.visualViewport || [], isOverflowElement(scrollableAncestor) ? scrollableAncestor : []);
-  }
-  return list.concat(scrollableAncestor, getOverflowAncestors(scrollableAncestor));
-}
-
-// Returns the inner client rect, subtracting scrollbars if present
-function getInnerBoundingClientRect(element, strategy) {
-  const clientRect = getBoundingClientRect(element, true, strategy === 'fixed');
-  const top = clientRect.top + element.clientTop;
-  const left = clientRect.left + element.clientLeft;
-  const scale = isHTMLElement(element) ? getScale(element) : {
-    x: 1,
-    y: 1
-  };
-  const width = element.clientWidth * scale.x;
-  const height = element.clientHeight * scale.y;
-  const x = left * scale.x;
-  const y = top * scale.y;
-  return {
-    top: y,
-    left: x,
-    right: x + width,
-    bottom: y + height,
-    x,
-    y,
-    width,
-    height
-  };
-}
-function getClientRectFromClippingAncestor(element, clippingAncestor, strategy) {
-  if (clippingAncestor === 'viewport') {
-    return Object(_floating_ui_core__WEBPACK_IMPORTED_MODULE_0__["rectToClientRect"])(getViewportRect(element, strategy));
-  }
-  if (isElement(clippingAncestor)) {
-    return getInnerBoundingClientRect(clippingAncestor, strategy);
-  }
-  return Object(_floating_ui_core__WEBPACK_IMPORTED_MODULE_0__["rectToClientRect"])(getDocumentRect(getDocumentElement(element)));
-}
-
-// A "clipping ancestor" is an `overflow` element with the characteristic of
-// clipping (or hiding) child elements. This returns all clipping ancestors
-// of the given element up the tree.
-function getClippingElementAncestors(element, cache) {
-  const cachedResult = cache.get(element);
-  if (cachedResult) {
-    return cachedResult;
-  }
-  let result = getOverflowAncestors(element).filter(el => isElement(el) && getNodeName(el) !== 'body');
-  let currentContainingBlockComputedStyle = null;
-  const elementIsFixed = getComputedStyle$1(element).position === 'fixed';
-  let currentNode = elementIsFixed ? getParentNode(element) : element;
-
-  // https://developer.mozilla.org/en-US/docs/Web/CSS/Containing_block#identifying_the_containing_block
-  while (isElement(currentNode) && !isLastTraversableNode(currentNode)) {
-    const computedStyle = getComputedStyle$1(currentNode);
-    const containingBlock = isContainingBlock(currentNode);
-    const shouldDropCurrentNode = elementIsFixed ? !containingBlock && !currentContainingBlockComputedStyle : !containingBlock && computedStyle.position === 'static' && !!currentContainingBlockComputedStyle && ['absolute', 'fixed'].includes(currentContainingBlockComputedStyle.position);
-    if (shouldDropCurrentNode) {
-      // Drop non-containing blocks
-      result = result.filter(ancestor => ancestor !== currentNode);
-    } else {
-      // Record last containing block for next iteration
-      currentContainingBlockComputedStyle = computedStyle;
-    }
-    currentNode = getParentNode(currentNode);
-  }
-  cache.set(element, result);
-  return result;
-}
-
-// Gets the maximum area that the element is visible in due to any number of
-// clipping ancestors
-function getClippingRect(_ref) {
-  let {
-    element,
-    boundary,
-    rootBoundary,
-    strategy
-  } = _ref;
-  const elementClippingAncestors = boundary === 'clippingAncestors' ? getClippingElementAncestors(element, this._c) : [].concat(boundary);
-  const clippingAncestors = [...elementClippingAncestors, rootBoundary];
-  const firstClippingAncestor = clippingAncestors[0];
-  const clippingRect = clippingAncestors.reduce((accRect, clippingAncestor) => {
-    const rect = getClientRectFromClippingAncestor(element, clippingAncestor, strategy);
-    accRect.top = max(rect.top, accRect.top);
-    accRect.right = min(rect.right, accRect.right);
-    accRect.bottom = min(rect.bottom, accRect.bottom);
-    accRect.left = max(rect.left, accRect.left);
-    return accRect;
-  }, getClientRectFromClippingAncestor(element, firstClippingAncestor, strategy));
-  return {
-    width: clippingRect.right - clippingRect.left,
-    height: clippingRect.bottom - clippingRect.top,
-    x: clippingRect.left,
-    y: clippingRect.top
-  };
-}
-
 const platform = {
   getClippingRect,
   convertOffsetParentRelativeRectToViewportRelativeRect,
@@ -5150,6 +5208,10 @@ const platform = {
 
 /**
  * Automatically updates the position of the floating element when necessary.
+ * Should only be called when the floating element is mounted on the DOM or
+ * visible on the screen.
+ * @returns cleanup function that should be invoked when the floating element is
+ * removed from the DOM or hidden from the screen.
  * @see https://floating-ui.com/docs/autoUpdate
  */
 function autoUpdate(reference, floating, update, options) {
@@ -5254,7 +5316,7 @@ const computePosition = (reference, floating, options) => {
 
 __webpack_require__(/*! core-js/shim */ "./node_modules/core-js/shim.js");
 
-__webpack_require__(/*! regenerator-runtime/runtime */ "./node_modules/regenerator-runtime/runtime.js");
+__webpack_require__(/*! regenerator-runtime/runtime */ "./node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js");
 
 __webpack_require__(/*! core-js/fn/regexp/escape */ "./node_modules/core-js/fn/regexp/escape.js");
 
@@ -5279,6 +5341,754 @@ define(String.prototype, "padRight", "".padEnd);
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
+
+/***/ }),
+
+/***/ "./node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js":
+/*!*********************************************************************************!*\
+  !*** ./node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js ***!
+  \*********************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(global) {/**
+ * Copyright (c) 2014, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * https://raw.github.com/facebook/regenerator/master/LICENSE file. An
+ * additional grant of patent rights can be found in the PATENTS file in
+ * the same directory.
+ */
+
+!(function(global) {
+  "use strict";
+
+  var Op = Object.prototype;
+  var hasOwn = Op.hasOwnProperty;
+  var undefined; // More compressible than void 0.
+  var $Symbol = typeof Symbol === "function" ? Symbol : {};
+  var iteratorSymbol = $Symbol.iterator || "@@iterator";
+  var asyncIteratorSymbol = $Symbol.asyncIterator || "@@asyncIterator";
+  var toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag";
+
+  var inModule = typeof module === "object";
+  var runtime = global.regeneratorRuntime;
+  if (runtime) {
+    if (inModule) {
+      // If regeneratorRuntime is defined globally and we're in a module,
+      // make the exports object identical to regeneratorRuntime.
+      module.exports = runtime;
+    }
+    // Don't bother evaluating the rest of this file if the runtime was
+    // already defined globally.
+    return;
+  }
+
+  // Define the runtime globally (as expected by generated code) as either
+  // module.exports (if we're in a module) or a new, empty object.
+  runtime = global.regeneratorRuntime = inModule ? module.exports : {};
+
+  function wrap(innerFn, outerFn, self, tryLocsList) {
+    // If outerFn provided and outerFn.prototype is a Generator, then outerFn.prototype instanceof Generator.
+    var protoGenerator = outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator;
+    var generator = Object.create(protoGenerator.prototype);
+    var context = new Context(tryLocsList || []);
+
+    // The ._invoke method unifies the implementations of the .next,
+    // .throw, and .return methods.
+    generator._invoke = makeInvokeMethod(innerFn, self, context);
+
+    return generator;
+  }
+  runtime.wrap = wrap;
+
+  // Try/catch helper to minimize deoptimizations. Returns a completion
+  // record like context.tryEntries[i].completion. This interface could
+  // have been (and was previously) designed to take a closure to be
+  // invoked without arguments, but in all the cases we care about we
+  // already have an existing method we want to call, so there's no need
+  // to create a new function object. We can even get away with assuming
+  // the method takes exactly one argument, since that happens to be true
+  // in every case, so we don't have to touch the arguments object. The
+  // only additional allocation required is the completion record, which
+  // has a stable shape and so hopefully should be cheap to allocate.
+  function tryCatch(fn, obj, arg) {
+    try {
+      return { type: "normal", arg: fn.call(obj, arg) };
+    } catch (err) {
+      return { type: "throw", arg: err };
+    }
+  }
+
+  var GenStateSuspendedStart = "suspendedStart";
+  var GenStateSuspendedYield = "suspendedYield";
+  var GenStateExecuting = "executing";
+  var GenStateCompleted = "completed";
+
+  // Returning this object from the innerFn has the same effect as
+  // breaking out of the dispatch switch statement.
+  var ContinueSentinel = {};
+
+  // Dummy constructor functions that we use as the .constructor and
+  // .constructor.prototype properties for functions that return Generator
+  // objects. For full spec compliance, you may wish to configure your
+  // minifier not to mangle the names of these two functions.
+  function Generator() {}
+  function GeneratorFunction() {}
+  function GeneratorFunctionPrototype() {}
+
+  // This is a polyfill for %IteratorPrototype% for environments that
+  // don't natively support it.
+  var IteratorPrototype = {};
+  IteratorPrototype[iteratorSymbol] = function () {
+    return this;
+  };
+
+  var getProto = Object.getPrototypeOf;
+  var NativeIteratorPrototype = getProto && getProto(getProto(values([])));
+  if (NativeIteratorPrototype &&
+      NativeIteratorPrototype !== Op &&
+      hasOwn.call(NativeIteratorPrototype, iteratorSymbol)) {
+    // This environment has a native %IteratorPrototype%; use it instead
+    // of the polyfill.
+    IteratorPrototype = NativeIteratorPrototype;
+  }
+
+  var Gp = GeneratorFunctionPrototype.prototype =
+    Generator.prototype = Object.create(IteratorPrototype);
+  GeneratorFunction.prototype = Gp.constructor = GeneratorFunctionPrototype;
+  GeneratorFunctionPrototype.constructor = GeneratorFunction;
+  GeneratorFunctionPrototype[toStringTagSymbol] =
+    GeneratorFunction.displayName = "GeneratorFunction";
+
+  // Helper for defining the .next, .throw, and .return methods of the
+  // Iterator interface in terms of a single ._invoke method.
+  function defineIteratorMethods(prototype) {
+    ["next", "throw", "return"].forEach(function(method) {
+      prototype[method] = function(arg) {
+        return this._invoke(method, arg);
+      };
+    });
+  }
+
+  runtime.isGeneratorFunction = function(genFun) {
+    var ctor = typeof genFun === "function" && genFun.constructor;
+    return ctor
+      ? ctor === GeneratorFunction ||
+        // For the native GeneratorFunction constructor, the best we can
+        // do is to check its .name property.
+        (ctor.displayName || ctor.name) === "GeneratorFunction"
+      : false;
+  };
+
+  runtime.mark = function(genFun) {
+    if (Object.setPrototypeOf) {
+      Object.setPrototypeOf(genFun, GeneratorFunctionPrototype);
+    } else {
+      genFun.__proto__ = GeneratorFunctionPrototype;
+      if (!(toStringTagSymbol in genFun)) {
+        genFun[toStringTagSymbol] = "GeneratorFunction";
+      }
+    }
+    genFun.prototype = Object.create(Gp);
+    return genFun;
+  };
+
+  // Within the body of any async function, `await x` is transformed to
+  // `yield regeneratorRuntime.awrap(x)`, so that the runtime can test
+  // `hasOwn.call(value, "__await")` to determine if the yielded value is
+  // meant to be awaited.
+  runtime.awrap = function(arg) {
+    return { __await: arg };
+  };
+
+  function AsyncIterator(generator) {
+    function invoke(method, arg, resolve, reject) {
+      var record = tryCatch(generator[method], generator, arg);
+      if (record.type === "throw") {
+        reject(record.arg);
+      } else {
+        var result = record.arg;
+        var value = result.value;
+        if (value &&
+            typeof value === "object" &&
+            hasOwn.call(value, "__await")) {
+          return Promise.resolve(value.__await).then(function(value) {
+            invoke("next", value, resolve, reject);
+          }, function(err) {
+            invoke("throw", err, resolve, reject);
+          });
+        }
+
+        return Promise.resolve(value).then(function(unwrapped) {
+          // When a yielded Promise is resolved, its final value becomes
+          // the .value of the Promise<{value,done}> result for the
+          // current iteration. If the Promise is rejected, however, the
+          // result for this iteration will be rejected with the same
+          // reason. Note that rejections of yielded Promises are not
+          // thrown back into the generator function, as is the case
+          // when an awaited Promise is rejected. This difference in
+          // behavior between yield and await is important, because it
+          // allows the consumer to decide what to do with the yielded
+          // rejection (swallow it and continue, manually .throw it back
+          // into the generator, abandon iteration, whatever). With
+          // await, by contrast, there is no opportunity to examine the
+          // rejection reason outside the generator function, so the
+          // only option is to throw it from the await expression, and
+          // let the generator function handle the exception.
+          result.value = unwrapped;
+          resolve(result);
+        }, reject);
+      }
+    }
+
+    if (typeof global.process === "object" && global.process.domain) {
+      invoke = global.process.domain.bind(invoke);
+    }
+
+    var previousPromise;
+
+    function enqueue(method, arg) {
+      function callInvokeWithMethodAndArg() {
+        return new Promise(function(resolve, reject) {
+          invoke(method, arg, resolve, reject);
+        });
+      }
+
+      return previousPromise =
+        // If enqueue has been called before, then we want to wait until
+        // all previous Promises have been resolved before calling invoke,
+        // so that results are always delivered in the correct order. If
+        // enqueue has not been called before, then it is important to
+        // call invoke immediately, without waiting on a callback to fire,
+        // so that the async generator function has the opportunity to do
+        // any necessary setup in a predictable way. This predictability
+        // is why the Promise constructor synchronously invokes its
+        // executor callback, and why async functions synchronously
+        // execute code before the first await. Since we implement simple
+        // async functions in terms of async generators, it is especially
+        // important to get this right, even though it requires care.
+        previousPromise ? previousPromise.then(
+          callInvokeWithMethodAndArg,
+          // Avoid propagating failures to Promises returned by later
+          // invocations of the iterator.
+          callInvokeWithMethodAndArg
+        ) : callInvokeWithMethodAndArg();
+    }
+
+    // Define the unified helper method that is used to implement .next,
+    // .throw, and .return (see defineIteratorMethods).
+    this._invoke = enqueue;
+  }
+
+  defineIteratorMethods(AsyncIterator.prototype);
+  AsyncIterator.prototype[asyncIteratorSymbol] = function () {
+    return this;
+  };
+  runtime.AsyncIterator = AsyncIterator;
+
+  // Note that simple async functions are implemented on top of
+  // AsyncIterator objects; they just return a Promise for the value of
+  // the final result produced by the iterator.
+  runtime.async = function(innerFn, outerFn, self, tryLocsList) {
+    var iter = new AsyncIterator(
+      wrap(innerFn, outerFn, self, tryLocsList)
+    );
+
+    return runtime.isGeneratorFunction(outerFn)
+      ? iter // If outerFn is a generator, return the full iterator.
+      : iter.next().then(function(result) {
+          return result.done ? result.value : iter.next();
+        });
+  };
+
+  function makeInvokeMethod(innerFn, self, context) {
+    var state = GenStateSuspendedStart;
+
+    return function invoke(method, arg) {
+      if (state === GenStateExecuting) {
+        throw new Error("Generator is already running");
+      }
+
+      if (state === GenStateCompleted) {
+        if (method === "throw") {
+          throw arg;
+        }
+
+        // Be forgiving, per 25.3.3.3.3 of the spec:
+        // https://people.mozilla.org/~jorendorff/es6-draft.html#sec-generatorresume
+        return doneResult();
+      }
+
+      context.method = method;
+      context.arg = arg;
+
+      while (true) {
+        var delegate = context.delegate;
+        if (delegate) {
+          var delegateResult = maybeInvokeDelegate(delegate, context);
+          if (delegateResult) {
+            if (delegateResult === ContinueSentinel) continue;
+            return delegateResult;
+          }
+        }
+
+        if (context.method === "next") {
+          // Setting context._sent for legacy support of Babel's
+          // function.sent implementation.
+          context.sent = context._sent = context.arg;
+
+        } else if (context.method === "throw") {
+          if (state === GenStateSuspendedStart) {
+            state = GenStateCompleted;
+            throw context.arg;
+          }
+
+          context.dispatchException(context.arg);
+
+        } else if (context.method === "return") {
+          context.abrupt("return", context.arg);
+        }
+
+        state = GenStateExecuting;
+
+        var record = tryCatch(innerFn, self, context);
+        if (record.type === "normal") {
+          // If an exception is thrown from innerFn, we leave state ===
+          // GenStateExecuting and loop back for another invocation.
+          state = context.done
+            ? GenStateCompleted
+            : GenStateSuspendedYield;
+
+          if (record.arg === ContinueSentinel) {
+            continue;
+          }
+
+          return {
+            value: record.arg,
+            done: context.done
+          };
+
+        } else if (record.type === "throw") {
+          state = GenStateCompleted;
+          // Dispatch the exception by looping back around to the
+          // context.dispatchException(context.arg) call above.
+          context.method = "throw";
+          context.arg = record.arg;
+        }
+      }
+    };
+  }
+
+  // Call delegate.iterator[context.method](context.arg) and handle the
+  // result, either by returning a { value, done } result from the
+  // delegate iterator, or by modifying context.method and context.arg,
+  // setting context.delegate to null, and returning the ContinueSentinel.
+  function maybeInvokeDelegate(delegate, context) {
+    var method = delegate.iterator[context.method];
+    if (method === undefined) {
+      // A .throw or .return when the delegate iterator has no .throw
+      // method always terminates the yield* loop.
+      context.delegate = null;
+
+      if (context.method === "throw") {
+        if (delegate.iterator.return) {
+          // If the delegate iterator has a return method, give it a
+          // chance to clean up.
+          context.method = "return";
+          context.arg = undefined;
+          maybeInvokeDelegate(delegate, context);
+
+          if (context.method === "throw") {
+            // If maybeInvokeDelegate(context) changed context.method from
+            // "return" to "throw", let that override the TypeError below.
+            return ContinueSentinel;
+          }
+        }
+
+        context.method = "throw";
+        context.arg = new TypeError(
+          "The iterator does not provide a 'throw' method");
+      }
+
+      return ContinueSentinel;
+    }
+
+    var record = tryCatch(method, delegate.iterator, context.arg);
+
+    if (record.type === "throw") {
+      context.method = "throw";
+      context.arg = record.arg;
+      context.delegate = null;
+      return ContinueSentinel;
+    }
+
+    var info = record.arg;
+
+    if (! info) {
+      context.method = "throw";
+      context.arg = new TypeError("iterator result is not an object");
+      context.delegate = null;
+      return ContinueSentinel;
+    }
+
+    if (info.done) {
+      // Assign the result of the finished delegate to the temporary
+      // variable specified by delegate.resultName (see delegateYield).
+      context[delegate.resultName] = info.value;
+
+      // Resume execution at the desired location (see delegateYield).
+      context.next = delegate.nextLoc;
+
+      // If context.method was "throw" but the delegate handled the
+      // exception, let the outer generator proceed normally. If
+      // context.method was "next", forget context.arg since it has been
+      // "consumed" by the delegate iterator. If context.method was
+      // "return", allow the original .return call to continue in the
+      // outer generator.
+      if (context.method !== "return") {
+        context.method = "next";
+        context.arg = undefined;
+      }
+
+    } else {
+      // Re-yield the result returned by the delegate method.
+      return info;
+    }
+
+    // The delegate iterator is finished, so forget it and continue with
+    // the outer generator.
+    context.delegate = null;
+    return ContinueSentinel;
+  }
+
+  // Define Generator.prototype.{next,throw,return} in terms of the
+  // unified ._invoke helper method.
+  defineIteratorMethods(Gp);
+
+  Gp[toStringTagSymbol] = "Generator";
+
+  // A Generator should always return itself as the iterator object when the
+  // @@iterator function is called on it. Some browsers' implementations of the
+  // iterator prototype chain incorrectly implement this, causing the Generator
+  // object to not be returned from this call. This ensures that doesn't happen.
+  // See https://github.com/facebook/regenerator/issues/274 for more details.
+  Gp[iteratorSymbol] = function() {
+    return this;
+  };
+
+  Gp.toString = function() {
+    return "[object Generator]";
+  };
+
+  function pushTryEntry(locs) {
+    var entry = { tryLoc: locs[0] };
+
+    if (1 in locs) {
+      entry.catchLoc = locs[1];
+    }
+
+    if (2 in locs) {
+      entry.finallyLoc = locs[2];
+      entry.afterLoc = locs[3];
+    }
+
+    this.tryEntries.push(entry);
+  }
+
+  function resetTryEntry(entry) {
+    var record = entry.completion || {};
+    record.type = "normal";
+    delete record.arg;
+    entry.completion = record;
+  }
+
+  function Context(tryLocsList) {
+    // The root entry object (effectively a try statement without a catch
+    // or a finally block) gives us a place to store values thrown from
+    // locations where there is no enclosing try statement.
+    this.tryEntries = [{ tryLoc: "root" }];
+    tryLocsList.forEach(pushTryEntry, this);
+    this.reset(true);
+  }
+
+  runtime.keys = function(object) {
+    var keys = [];
+    for (var key in object) {
+      keys.push(key);
+    }
+    keys.reverse();
+
+    // Rather than returning an object with a next method, we keep
+    // things simple and return the next function itself.
+    return function next() {
+      while (keys.length) {
+        var key = keys.pop();
+        if (key in object) {
+          next.value = key;
+          next.done = false;
+          return next;
+        }
+      }
+
+      // To avoid creating an additional object, we just hang the .value
+      // and .done properties off the next function object itself. This
+      // also ensures that the minifier will not anonymize the function.
+      next.done = true;
+      return next;
+    };
+  };
+
+  function values(iterable) {
+    if (iterable) {
+      var iteratorMethod = iterable[iteratorSymbol];
+      if (iteratorMethod) {
+        return iteratorMethod.call(iterable);
+      }
+
+      if (typeof iterable.next === "function") {
+        return iterable;
+      }
+
+      if (!isNaN(iterable.length)) {
+        var i = -1, next = function next() {
+          while (++i < iterable.length) {
+            if (hasOwn.call(iterable, i)) {
+              next.value = iterable[i];
+              next.done = false;
+              return next;
+            }
+          }
+
+          next.value = undefined;
+          next.done = true;
+
+          return next;
+        };
+
+        return next.next = next;
+      }
+    }
+
+    // Return an iterator with no values.
+    return { next: doneResult };
+  }
+  runtime.values = values;
+
+  function doneResult() {
+    return { value: undefined, done: true };
+  }
+
+  Context.prototype = {
+    constructor: Context,
+
+    reset: function(skipTempReset) {
+      this.prev = 0;
+      this.next = 0;
+      // Resetting context._sent for legacy support of Babel's
+      // function.sent implementation.
+      this.sent = this._sent = undefined;
+      this.done = false;
+      this.delegate = null;
+
+      this.method = "next";
+      this.arg = undefined;
+
+      this.tryEntries.forEach(resetTryEntry);
+
+      if (!skipTempReset) {
+        for (var name in this) {
+          // Not sure about the optimal order of these conditions:
+          if (name.charAt(0) === "t" &&
+              hasOwn.call(this, name) &&
+              !isNaN(+name.slice(1))) {
+            this[name] = undefined;
+          }
+        }
+      }
+    },
+
+    stop: function() {
+      this.done = true;
+
+      var rootEntry = this.tryEntries[0];
+      var rootRecord = rootEntry.completion;
+      if (rootRecord.type === "throw") {
+        throw rootRecord.arg;
+      }
+
+      return this.rval;
+    },
+
+    dispatchException: function(exception) {
+      if (this.done) {
+        throw exception;
+      }
+
+      var context = this;
+      function handle(loc, caught) {
+        record.type = "throw";
+        record.arg = exception;
+        context.next = loc;
+
+        if (caught) {
+          // If the dispatched exception was caught by a catch block,
+          // then let that catch block handle the exception normally.
+          context.method = "next";
+          context.arg = undefined;
+        }
+
+        return !! caught;
+      }
+
+      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
+        var entry = this.tryEntries[i];
+        var record = entry.completion;
+
+        if (entry.tryLoc === "root") {
+          // Exception thrown outside of any try block that could handle
+          // it, so set the completion value of the entire function to
+          // throw the exception.
+          return handle("end");
+        }
+
+        if (entry.tryLoc <= this.prev) {
+          var hasCatch = hasOwn.call(entry, "catchLoc");
+          var hasFinally = hasOwn.call(entry, "finallyLoc");
+
+          if (hasCatch && hasFinally) {
+            if (this.prev < entry.catchLoc) {
+              return handle(entry.catchLoc, true);
+            } else if (this.prev < entry.finallyLoc) {
+              return handle(entry.finallyLoc);
+            }
+
+          } else if (hasCatch) {
+            if (this.prev < entry.catchLoc) {
+              return handle(entry.catchLoc, true);
+            }
+
+          } else if (hasFinally) {
+            if (this.prev < entry.finallyLoc) {
+              return handle(entry.finallyLoc);
+            }
+
+          } else {
+            throw new Error("try statement without catch or finally");
+          }
+        }
+      }
+    },
+
+    abrupt: function(type, arg) {
+      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
+        var entry = this.tryEntries[i];
+        if (entry.tryLoc <= this.prev &&
+            hasOwn.call(entry, "finallyLoc") &&
+            this.prev < entry.finallyLoc) {
+          var finallyEntry = entry;
+          break;
+        }
+      }
+
+      if (finallyEntry &&
+          (type === "break" ||
+           type === "continue") &&
+          finallyEntry.tryLoc <= arg &&
+          arg <= finallyEntry.finallyLoc) {
+        // Ignore the finally entry if control is not jumping to a
+        // location outside the try/catch block.
+        finallyEntry = null;
+      }
+
+      var record = finallyEntry ? finallyEntry.completion : {};
+      record.type = type;
+      record.arg = arg;
+
+      if (finallyEntry) {
+        this.method = "next";
+        this.next = finallyEntry.finallyLoc;
+        return ContinueSentinel;
+      }
+
+      return this.complete(record);
+    },
+
+    complete: function(record, afterLoc) {
+      if (record.type === "throw") {
+        throw record.arg;
+      }
+
+      if (record.type === "break" ||
+          record.type === "continue") {
+        this.next = record.arg;
+      } else if (record.type === "return") {
+        this.rval = this.arg = record.arg;
+        this.method = "return";
+        this.next = "end";
+      } else if (record.type === "normal" && afterLoc) {
+        this.next = afterLoc;
+      }
+
+      return ContinueSentinel;
+    },
+
+    finish: function(finallyLoc) {
+      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
+        var entry = this.tryEntries[i];
+        if (entry.finallyLoc === finallyLoc) {
+          this.complete(entry.completion, entry.afterLoc);
+          resetTryEntry(entry);
+          return ContinueSentinel;
+        }
+      }
+    },
+
+    "catch": function(tryLoc) {
+      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
+        var entry = this.tryEntries[i];
+        if (entry.tryLoc === tryLoc) {
+          var record = entry.completion;
+          if (record.type === "throw") {
+            var thrown = record.arg;
+            resetTryEntry(entry);
+          }
+          return thrown;
+        }
+      }
+
+      // The context.catch method must only be called with a location
+      // argument that corresponds to a known catch block.
+      throw new Error("illegal catch attempt");
+    },
+
+    delegateYield: function(iterable, resultName, nextLoc) {
+      this.delegate = {
+        iterator: values(iterable),
+        resultName: resultName,
+        nextLoc: nextLoc
+      };
+
+      if (this.method === "next") {
+        // Deliberately forget the last sent value so that we don't
+        // accidentally pass it on to the delegate.
+        this.arg = undefined;
+      }
+
+      return ContinueSentinel;
+    }
+  };
+})(
+  // Among the various tricks for obtaining a reference to the global
+  // object, this seems to be the most reliable technique that does not
+  // use indirect eval (which violates Content Security Policy).
+  typeof global === "object" ? global :
+  typeof window === "object" ? window :
+  typeof self === "object" ? self : this
+);
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
 
@@ -22438,7 +23248,7 @@ var printWarning = function() {};
 if (true) {
   var ReactPropTypesSecret = __webpack_require__(/*! ./lib/ReactPropTypesSecret */ "./node_modules/prop-types/lib/ReactPropTypesSecret.js");
   var loggedTypeFailures = {};
-  var has = Function.call.bind(Object.prototype.hasOwnProperty);
+  var has = __webpack_require__(/*! ./lib/has */ "./node_modules/prop-types/lib/has.js");
 
   printWarning = function(text) {
     var message = 'Warning: ' + text;
@@ -22450,7 +23260,7 @@ if (true) {
       // This error was thrown as a convenience so that you can use this stack
       // to find the callsite that caused this warning to fire.
       throw new Error(message);
-    } catch (x) {}
+    } catch (x) { /**/ }
   };
 }
 
@@ -22479,7 +23289,8 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
           if (typeof typeSpecs[typeSpecName] !== 'function') {
             var err = Error(
               (componentName || 'React class') + ': ' + location + ' type `' + typeSpecName + '` is invalid; ' +
-              'it must be a function, usually from the `prop-types` package, but received `' + typeof typeSpecs[typeSpecName] + '`.'
+              'it must be a function, usually from the `prop-types` package, but received `' + typeof typeSpecs[typeSpecName] + '`.' +
+              'This often happens because of typos such as `PropTypes.function` instead of `PropTypes.func`.'
             );
             err.name = 'Invariant Violation';
             throw err;
@@ -22550,6 +23361,18 @@ module.exports = checkPropTypes;
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
+
+
+/***/ }),
+
+/***/ "./node_modules/prop-types/lib/has.js":
+/*!********************************************!*\
+  !*** ./node_modules/prop-types/lib/has.js ***!
+  \********************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = Function.call.bind(Object.prototype.hasOwnProperty);
 
 
 /***/ }),
@@ -54007,754 +54830,6 @@ if (false) {} else {
 
 /***/ }),
 
-/***/ "./node_modules/regenerator-runtime/runtime.js":
-/*!*****************************************************!*\
-  !*** ./node_modules/regenerator-runtime/runtime.js ***!
-  \*****************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-/* WEBPACK VAR INJECTION */(function(global) {/**
- * Copyright (c) 2014, Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * https://raw.github.com/facebook/regenerator/master/LICENSE file. An
- * additional grant of patent rights can be found in the PATENTS file in
- * the same directory.
- */
-
-!(function(global) {
-  "use strict";
-
-  var Op = Object.prototype;
-  var hasOwn = Op.hasOwnProperty;
-  var undefined; // More compressible than void 0.
-  var $Symbol = typeof Symbol === "function" ? Symbol : {};
-  var iteratorSymbol = $Symbol.iterator || "@@iterator";
-  var asyncIteratorSymbol = $Symbol.asyncIterator || "@@asyncIterator";
-  var toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag";
-
-  var inModule = typeof module === "object";
-  var runtime = global.regeneratorRuntime;
-  if (runtime) {
-    if (inModule) {
-      // If regeneratorRuntime is defined globally and we're in a module,
-      // make the exports object identical to regeneratorRuntime.
-      module.exports = runtime;
-    }
-    // Don't bother evaluating the rest of this file if the runtime was
-    // already defined globally.
-    return;
-  }
-
-  // Define the runtime globally (as expected by generated code) as either
-  // module.exports (if we're in a module) or a new, empty object.
-  runtime = global.regeneratorRuntime = inModule ? module.exports : {};
-
-  function wrap(innerFn, outerFn, self, tryLocsList) {
-    // If outerFn provided and outerFn.prototype is a Generator, then outerFn.prototype instanceof Generator.
-    var protoGenerator = outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator;
-    var generator = Object.create(protoGenerator.prototype);
-    var context = new Context(tryLocsList || []);
-
-    // The ._invoke method unifies the implementations of the .next,
-    // .throw, and .return methods.
-    generator._invoke = makeInvokeMethod(innerFn, self, context);
-
-    return generator;
-  }
-  runtime.wrap = wrap;
-
-  // Try/catch helper to minimize deoptimizations. Returns a completion
-  // record like context.tryEntries[i].completion. This interface could
-  // have been (and was previously) designed to take a closure to be
-  // invoked without arguments, but in all the cases we care about we
-  // already have an existing method we want to call, so there's no need
-  // to create a new function object. We can even get away with assuming
-  // the method takes exactly one argument, since that happens to be true
-  // in every case, so we don't have to touch the arguments object. The
-  // only additional allocation required is the completion record, which
-  // has a stable shape and so hopefully should be cheap to allocate.
-  function tryCatch(fn, obj, arg) {
-    try {
-      return { type: "normal", arg: fn.call(obj, arg) };
-    } catch (err) {
-      return { type: "throw", arg: err };
-    }
-  }
-
-  var GenStateSuspendedStart = "suspendedStart";
-  var GenStateSuspendedYield = "suspendedYield";
-  var GenStateExecuting = "executing";
-  var GenStateCompleted = "completed";
-
-  // Returning this object from the innerFn has the same effect as
-  // breaking out of the dispatch switch statement.
-  var ContinueSentinel = {};
-
-  // Dummy constructor functions that we use as the .constructor and
-  // .constructor.prototype properties for functions that return Generator
-  // objects. For full spec compliance, you may wish to configure your
-  // minifier not to mangle the names of these two functions.
-  function Generator() {}
-  function GeneratorFunction() {}
-  function GeneratorFunctionPrototype() {}
-
-  // This is a polyfill for %IteratorPrototype% for environments that
-  // don't natively support it.
-  var IteratorPrototype = {};
-  IteratorPrototype[iteratorSymbol] = function () {
-    return this;
-  };
-
-  var getProto = Object.getPrototypeOf;
-  var NativeIteratorPrototype = getProto && getProto(getProto(values([])));
-  if (NativeIteratorPrototype &&
-      NativeIteratorPrototype !== Op &&
-      hasOwn.call(NativeIteratorPrototype, iteratorSymbol)) {
-    // This environment has a native %IteratorPrototype%; use it instead
-    // of the polyfill.
-    IteratorPrototype = NativeIteratorPrototype;
-  }
-
-  var Gp = GeneratorFunctionPrototype.prototype =
-    Generator.prototype = Object.create(IteratorPrototype);
-  GeneratorFunction.prototype = Gp.constructor = GeneratorFunctionPrototype;
-  GeneratorFunctionPrototype.constructor = GeneratorFunction;
-  GeneratorFunctionPrototype[toStringTagSymbol] =
-    GeneratorFunction.displayName = "GeneratorFunction";
-
-  // Helper for defining the .next, .throw, and .return methods of the
-  // Iterator interface in terms of a single ._invoke method.
-  function defineIteratorMethods(prototype) {
-    ["next", "throw", "return"].forEach(function(method) {
-      prototype[method] = function(arg) {
-        return this._invoke(method, arg);
-      };
-    });
-  }
-
-  runtime.isGeneratorFunction = function(genFun) {
-    var ctor = typeof genFun === "function" && genFun.constructor;
-    return ctor
-      ? ctor === GeneratorFunction ||
-        // For the native GeneratorFunction constructor, the best we can
-        // do is to check its .name property.
-        (ctor.displayName || ctor.name) === "GeneratorFunction"
-      : false;
-  };
-
-  runtime.mark = function(genFun) {
-    if (Object.setPrototypeOf) {
-      Object.setPrototypeOf(genFun, GeneratorFunctionPrototype);
-    } else {
-      genFun.__proto__ = GeneratorFunctionPrototype;
-      if (!(toStringTagSymbol in genFun)) {
-        genFun[toStringTagSymbol] = "GeneratorFunction";
-      }
-    }
-    genFun.prototype = Object.create(Gp);
-    return genFun;
-  };
-
-  // Within the body of any async function, `await x` is transformed to
-  // `yield regeneratorRuntime.awrap(x)`, so that the runtime can test
-  // `hasOwn.call(value, "__await")` to determine if the yielded value is
-  // meant to be awaited.
-  runtime.awrap = function(arg) {
-    return { __await: arg };
-  };
-
-  function AsyncIterator(generator) {
-    function invoke(method, arg, resolve, reject) {
-      var record = tryCatch(generator[method], generator, arg);
-      if (record.type === "throw") {
-        reject(record.arg);
-      } else {
-        var result = record.arg;
-        var value = result.value;
-        if (value &&
-            typeof value === "object" &&
-            hasOwn.call(value, "__await")) {
-          return Promise.resolve(value.__await).then(function(value) {
-            invoke("next", value, resolve, reject);
-          }, function(err) {
-            invoke("throw", err, resolve, reject);
-          });
-        }
-
-        return Promise.resolve(value).then(function(unwrapped) {
-          // When a yielded Promise is resolved, its final value becomes
-          // the .value of the Promise<{value,done}> result for the
-          // current iteration. If the Promise is rejected, however, the
-          // result for this iteration will be rejected with the same
-          // reason. Note that rejections of yielded Promises are not
-          // thrown back into the generator function, as is the case
-          // when an awaited Promise is rejected. This difference in
-          // behavior between yield and await is important, because it
-          // allows the consumer to decide what to do with the yielded
-          // rejection (swallow it and continue, manually .throw it back
-          // into the generator, abandon iteration, whatever). With
-          // await, by contrast, there is no opportunity to examine the
-          // rejection reason outside the generator function, so the
-          // only option is to throw it from the await expression, and
-          // let the generator function handle the exception.
-          result.value = unwrapped;
-          resolve(result);
-        }, reject);
-      }
-    }
-
-    if (typeof global.process === "object" && global.process.domain) {
-      invoke = global.process.domain.bind(invoke);
-    }
-
-    var previousPromise;
-
-    function enqueue(method, arg) {
-      function callInvokeWithMethodAndArg() {
-        return new Promise(function(resolve, reject) {
-          invoke(method, arg, resolve, reject);
-        });
-      }
-
-      return previousPromise =
-        // If enqueue has been called before, then we want to wait until
-        // all previous Promises have been resolved before calling invoke,
-        // so that results are always delivered in the correct order. If
-        // enqueue has not been called before, then it is important to
-        // call invoke immediately, without waiting on a callback to fire,
-        // so that the async generator function has the opportunity to do
-        // any necessary setup in a predictable way. This predictability
-        // is why the Promise constructor synchronously invokes its
-        // executor callback, and why async functions synchronously
-        // execute code before the first await. Since we implement simple
-        // async functions in terms of async generators, it is especially
-        // important to get this right, even though it requires care.
-        previousPromise ? previousPromise.then(
-          callInvokeWithMethodAndArg,
-          // Avoid propagating failures to Promises returned by later
-          // invocations of the iterator.
-          callInvokeWithMethodAndArg
-        ) : callInvokeWithMethodAndArg();
-    }
-
-    // Define the unified helper method that is used to implement .next,
-    // .throw, and .return (see defineIteratorMethods).
-    this._invoke = enqueue;
-  }
-
-  defineIteratorMethods(AsyncIterator.prototype);
-  AsyncIterator.prototype[asyncIteratorSymbol] = function () {
-    return this;
-  };
-  runtime.AsyncIterator = AsyncIterator;
-
-  // Note that simple async functions are implemented on top of
-  // AsyncIterator objects; they just return a Promise for the value of
-  // the final result produced by the iterator.
-  runtime.async = function(innerFn, outerFn, self, tryLocsList) {
-    var iter = new AsyncIterator(
-      wrap(innerFn, outerFn, self, tryLocsList)
-    );
-
-    return runtime.isGeneratorFunction(outerFn)
-      ? iter // If outerFn is a generator, return the full iterator.
-      : iter.next().then(function(result) {
-          return result.done ? result.value : iter.next();
-        });
-  };
-
-  function makeInvokeMethod(innerFn, self, context) {
-    var state = GenStateSuspendedStart;
-
-    return function invoke(method, arg) {
-      if (state === GenStateExecuting) {
-        throw new Error("Generator is already running");
-      }
-
-      if (state === GenStateCompleted) {
-        if (method === "throw") {
-          throw arg;
-        }
-
-        // Be forgiving, per 25.3.3.3.3 of the spec:
-        // https://people.mozilla.org/~jorendorff/es6-draft.html#sec-generatorresume
-        return doneResult();
-      }
-
-      context.method = method;
-      context.arg = arg;
-
-      while (true) {
-        var delegate = context.delegate;
-        if (delegate) {
-          var delegateResult = maybeInvokeDelegate(delegate, context);
-          if (delegateResult) {
-            if (delegateResult === ContinueSentinel) continue;
-            return delegateResult;
-          }
-        }
-
-        if (context.method === "next") {
-          // Setting context._sent for legacy support of Babel's
-          // function.sent implementation.
-          context.sent = context._sent = context.arg;
-
-        } else if (context.method === "throw") {
-          if (state === GenStateSuspendedStart) {
-            state = GenStateCompleted;
-            throw context.arg;
-          }
-
-          context.dispatchException(context.arg);
-
-        } else if (context.method === "return") {
-          context.abrupt("return", context.arg);
-        }
-
-        state = GenStateExecuting;
-
-        var record = tryCatch(innerFn, self, context);
-        if (record.type === "normal") {
-          // If an exception is thrown from innerFn, we leave state ===
-          // GenStateExecuting and loop back for another invocation.
-          state = context.done
-            ? GenStateCompleted
-            : GenStateSuspendedYield;
-
-          if (record.arg === ContinueSentinel) {
-            continue;
-          }
-
-          return {
-            value: record.arg,
-            done: context.done
-          };
-
-        } else if (record.type === "throw") {
-          state = GenStateCompleted;
-          // Dispatch the exception by looping back around to the
-          // context.dispatchException(context.arg) call above.
-          context.method = "throw";
-          context.arg = record.arg;
-        }
-      }
-    };
-  }
-
-  // Call delegate.iterator[context.method](context.arg) and handle the
-  // result, either by returning a { value, done } result from the
-  // delegate iterator, or by modifying context.method and context.arg,
-  // setting context.delegate to null, and returning the ContinueSentinel.
-  function maybeInvokeDelegate(delegate, context) {
-    var method = delegate.iterator[context.method];
-    if (method === undefined) {
-      // A .throw or .return when the delegate iterator has no .throw
-      // method always terminates the yield* loop.
-      context.delegate = null;
-
-      if (context.method === "throw") {
-        if (delegate.iterator.return) {
-          // If the delegate iterator has a return method, give it a
-          // chance to clean up.
-          context.method = "return";
-          context.arg = undefined;
-          maybeInvokeDelegate(delegate, context);
-
-          if (context.method === "throw") {
-            // If maybeInvokeDelegate(context) changed context.method from
-            // "return" to "throw", let that override the TypeError below.
-            return ContinueSentinel;
-          }
-        }
-
-        context.method = "throw";
-        context.arg = new TypeError(
-          "The iterator does not provide a 'throw' method");
-      }
-
-      return ContinueSentinel;
-    }
-
-    var record = tryCatch(method, delegate.iterator, context.arg);
-
-    if (record.type === "throw") {
-      context.method = "throw";
-      context.arg = record.arg;
-      context.delegate = null;
-      return ContinueSentinel;
-    }
-
-    var info = record.arg;
-
-    if (! info) {
-      context.method = "throw";
-      context.arg = new TypeError("iterator result is not an object");
-      context.delegate = null;
-      return ContinueSentinel;
-    }
-
-    if (info.done) {
-      // Assign the result of the finished delegate to the temporary
-      // variable specified by delegate.resultName (see delegateYield).
-      context[delegate.resultName] = info.value;
-
-      // Resume execution at the desired location (see delegateYield).
-      context.next = delegate.nextLoc;
-
-      // If context.method was "throw" but the delegate handled the
-      // exception, let the outer generator proceed normally. If
-      // context.method was "next", forget context.arg since it has been
-      // "consumed" by the delegate iterator. If context.method was
-      // "return", allow the original .return call to continue in the
-      // outer generator.
-      if (context.method !== "return") {
-        context.method = "next";
-        context.arg = undefined;
-      }
-
-    } else {
-      // Re-yield the result returned by the delegate method.
-      return info;
-    }
-
-    // The delegate iterator is finished, so forget it and continue with
-    // the outer generator.
-    context.delegate = null;
-    return ContinueSentinel;
-  }
-
-  // Define Generator.prototype.{next,throw,return} in terms of the
-  // unified ._invoke helper method.
-  defineIteratorMethods(Gp);
-
-  Gp[toStringTagSymbol] = "Generator";
-
-  // A Generator should always return itself as the iterator object when the
-  // @@iterator function is called on it. Some browsers' implementations of the
-  // iterator prototype chain incorrectly implement this, causing the Generator
-  // object to not be returned from this call. This ensures that doesn't happen.
-  // See https://github.com/facebook/regenerator/issues/274 for more details.
-  Gp[iteratorSymbol] = function() {
-    return this;
-  };
-
-  Gp.toString = function() {
-    return "[object Generator]";
-  };
-
-  function pushTryEntry(locs) {
-    var entry = { tryLoc: locs[0] };
-
-    if (1 in locs) {
-      entry.catchLoc = locs[1];
-    }
-
-    if (2 in locs) {
-      entry.finallyLoc = locs[2];
-      entry.afterLoc = locs[3];
-    }
-
-    this.tryEntries.push(entry);
-  }
-
-  function resetTryEntry(entry) {
-    var record = entry.completion || {};
-    record.type = "normal";
-    delete record.arg;
-    entry.completion = record;
-  }
-
-  function Context(tryLocsList) {
-    // The root entry object (effectively a try statement without a catch
-    // or a finally block) gives us a place to store values thrown from
-    // locations where there is no enclosing try statement.
-    this.tryEntries = [{ tryLoc: "root" }];
-    tryLocsList.forEach(pushTryEntry, this);
-    this.reset(true);
-  }
-
-  runtime.keys = function(object) {
-    var keys = [];
-    for (var key in object) {
-      keys.push(key);
-    }
-    keys.reverse();
-
-    // Rather than returning an object with a next method, we keep
-    // things simple and return the next function itself.
-    return function next() {
-      while (keys.length) {
-        var key = keys.pop();
-        if (key in object) {
-          next.value = key;
-          next.done = false;
-          return next;
-        }
-      }
-
-      // To avoid creating an additional object, we just hang the .value
-      // and .done properties off the next function object itself. This
-      // also ensures that the minifier will not anonymize the function.
-      next.done = true;
-      return next;
-    };
-  };
-
-  function values(iterable) {
-    if (iterable) {
-      var iteratorMethod = iterable[iteratorSymbol];
-      if (iteratorMethod) {
-        return iteratorMethod.call(iterable);
-      }
-
-      if (typeof iterable.next === "function") {
-        return iterable;
-      }
-
-      if (!isNaN(iterable.length)) {
-        var i = -1, next = function next() {
-          while (++i < iterable.length) {
-            if (hasOwn.call(iterable, i)) {
-              next.value = iterable[i];
-              next.done = false;
-              return next;
-            }
-          }
-
-          next.value = undefined;
-          next.done = true;
-
-          return next;
-        };
-
-        return next.next = next;
-      }
-    }
-
-    // Return an iterator with no values.
-    return { next: doneResult };
-  }
-  runtime.values = values;
-
-  function doneResult() {
-    return { value: undefined, done: true };
-  }
-
-  Context.prototype = {
-    constructor: Context,
-
-    reset: function(skipTempReset) {
-      this.prev = 0;
-      this.next = 0;
-      // Resetting context._sent for legacy support of Babel's
-      // function.sent implementation.
-      this.sent = this._sent = undefined;
-      this.done = false;
-      this.delegate = null;
-
-      this.method = "next";
-      this.arg = undefined;
-
-      this.tryEntries.forEach(resetTryEntry);
-
-      if (!skipTempReset) {
-        for (var name in this) {
-          // Not sure about the optimal order of these conditions:
-          if (name.charAt(0) === "t" &&
-              hasOwn.call(this, name) &&
-              !isNaN(+name.slice(1))) {
-            this[name] = undefined;
-          }
-        }
-      }
-    },
-
-    stop: function() {
-      this.done = true;
-
-      var rootEntry = this.tryEntries[0];
-      var rootRecord = rootEntry.completion;
-      if (rootRecord.type === "throw") {
-        throw rootRecord.arg;
-      }
-
-      return this.rval;
-    },
-
-    dispatchException: function(exception) {
-      if (this.done) {
-        throw exception;
-      }
-
-      var context = this;
-      function handle(loc, caught) {
-        record.type = "throw";
-        record.arg = exception;
-        context.next = loc;
-
-        if (caught) {
-          // If the dispatched exception was caught by a catch block,
-          // then let that catch block handle the exception normally.
-          context.method = "next";
-          context.arg = undefined;
-        }
-
-        return !! caught;
-      }
-
-      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
-        var entry = this.tryEntries[i];
-        var record = entry.completion;
-
-        if (entry.tryLoc === "root") {
-          // Exception thrown outside of any try block that could handle
-          // it, so set the completion value of the entire function to
-          // throw the exception.
-          return handle("end");
-        }
-
-        if (entry.tryLoc <= this.prev) {
-          var hasCatch = hasOwn.call(entry, "catchLoc");
-          var hasFinally = hasOwn.call(entry, "finallyLoc");
-
-          if (hasCatch && hasFinally) {
-            if (this.prev < entry.catchLoc) {
-              return handle(entry.catchLoc, true);
-            } else if (this.prev < entry.finallyLoc) {
-              return handle(entry.finallyLoc);
-            }
-
-          } else if (hasCatch) {
-            if (this.prev < entry.catchLoc) {
-              return handle(entry.catchLoc, true);
-            }
-
-          } else if (hasFinally) {
-            if (this.prev < entry.finallyLoc) {
-              return handle(entry.finallyLoc);
-            }
-
-          } else {
-            throw new Error("try statement without catch or finally");
-          }
-        }
-      }
-    },
-
-    abrupt: function(type, arg) {
-      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
-        var entry = this.tryEntries[i];
-        if (entry.tryLoc <= this.prev &&
-            hasOwn.call(entry, "finallyLoc") &&
-            this.prev < entry.finallyLoc) {
-          var finallyEntry = entry;
-          break;
-        }
-      }
-
-      if (finallyEntry &&
-          (type === "break" ||
-           type === "continue") &&
-          finallyEntry.tryLoc <= arg &&
-          arg <= finallyEntry.finallyLoc) {
-        // Ignore the finally entry if control is not jumping to a
-        // location outside the try/catch block.
-        finallyEntry = null;
-      }
-
-      var record = finallyEntry ? finallyEntry.completion : {};
-      record.type = type;
-      record.arg = arg;
-
-      if (finallyEntry) {
-        this.method = "next";
-        this.next = finallyEntry.finallyLoc;
-        return ContinueSentinel;
-      }
-
-      return this.complete(record);
-    },
-
-    complete: function(record, afterLoc) {
-      if (record.type === "throw") {
-        throw record.arg;
-      }
-
-      if (record.type === "break" ||
-          record.type === "continue") {
-        this.next = record.arg;
-      } else if (record.type === "return") {
-        this.rval = this.arg = record.arg;
-        this.method = "return";
-        this.next = "end";
-      } else if (record.type === "normal" && afterLoc) {
-        this.next = afterLoc;
-      }
-
-      return ContinueSentinel;
-    },
-
-    finish: function(finallyLoc) {
-      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
-        var entry = this.tryEntries[i];
-        if (entry.finallyLoc === finallyLoc) {
-          this.complete(entry.completion, entry.afterLoc);
-          resetTryEntry(entry);
-          return ContinueSentinel;
-        }
-      }
-    },
-
-    "catch": function(tryLoc) {
-      for (var i = this.tryEntries.length - 1; i >= 0; --i) {
-        var entry = this.tryEntries[i];
-        if (entry.tryLoc === tryLoc) {
-          var record = entry.completion;
-          if (record.type === "throw") {
-            var thrown = record.arg;
-            resetTryEntry(entry);
-          }
-          return thrown;
-        }
-      }
-
-      // The context.catch method must only be called with a location
-      // argument that corresponds to a known catch block.
-      throw new Error("illegal catch attempt");
-    },
-
-    delegateYield: function(iterable, resultName, nextLoc) {
-      this.delegate = {
-        iterator: values(iterable),
-        resultName: resultName,
-        nextLoc: nextLoc
-      };
-
-      if (this.method === "next") {
-        // Deliberately forget the last sent value so that we don't
-        // accidentally pass it on to the delegate.
-        this.arg = undefined;
-      }
-
-      return ContinueSentinel;
-    }
-  };
-})(
-  // Among the various tricks for obtaining a reference to the global
-  // object, this seems to be the most reliable technique that does not
-  // use indirect eval (which violates Content Security Policy).
-  typeof global === "object" ? global :
-  typeof window === "object" ? window :
-  typeof self === "object" ? self : this
-);
-
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
-
-/***/ }),
-
 /***/ "./node_modules/scheduler/cjs/scheduler-tracing.development.js":
 /*!*********************************************************************!*\
   !*** ./node_modules/scheduler/cjs/scheduler-tracing.development.js ***!
@@ -56749,32 +56824,32 @@ module.exports = g;
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+/* eslint-disable no-alert */
 
 
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
-
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
 var StringSimilarity = __webpack_require__(/*! string-similarity */ "./node_modules/string-similarity/src/index.js");
-
 var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js");
-
 var Endpoints = __webpack_require__(/*! endpoints.js */ "./source/endpoints.js");
-
 var poolKeyPrefix = "pool|";
 var Common = module.exports;
 module.exports.divisionNames = ["Open Pairs", "Mixed Pairs", "Open Co-op", "Women Pairs"];
 module.exports.roundNames = ["Finals", "Semifinals", "Quarterfinals", "Preliminaries"];
-
 module.exports.fetchEx = function (key, pathParams, queryParams, options) {
   return fetch(Endpoints.buildUrl(key, pathParams, queryParams), options).then(function (response) {
     return response.json();
   });
 };
-
 module.exports.uploadEventData = function () {
+  var eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey];
+  if (eventSummaryData === undefined) {
+    alert("Can't find event summary data for selected event");
+  }
+  MainStore.eventData.key = MainStore.selectedEventKey;
+  MainStore.eventData.eventName = eventSummaryData.eventName;
+  console.log(2, eventSummaryData.eventName);
   console.log(JSON.parse(JSON.stringify(MainStore.eventData)));
   return Common.fetchEx("IMPORT_EVENT_DATA", {
     eventKey: MainStore.eventData.key
@@ -56790,12 +56865,10 @@ module.exports.uploadEventData = function () {
     console.error("Trying to update event state \"".concat(error, "\""));
   });
 };
-
 module.exports.downloadAndMerge = function () {
   if (MainStore.selectedEventKey === undefined) {
     return undefined;
   }
-
   return Common.fetchEx("GET_EVENT_DATA", {
     eventKey: MainStore.selectedEventKey
   }, {}, {
@@ -56809,35 +56882,29 @@ module.exports.downloadAndMerge = function () {
   })["catch"](function (error) {
     console.error("Failed to download Event Data: ".concat(error));
   });
-}; // Moves data from currentPoolMap into newPoolMap
+};
 
-
+// Moves data from currentPoolMap into newPoolMap
 function mergePoolMap(currentPoolMap, newPoolMap) {
   for (var poolKey in newPoolMap) {
     var newPoolData = newPoolMap[poolKey];
     var currentPoolData = currentPoolMap[poolKey];
-
     if (currentPoolData !== undefined) {
       var _iterator = _createForOfIteratorHelper(currentPoolData.teamData),
-          _step;
-
+        _step;
       try {
         for (_iterator.s(); !(_step = _iterator.n()).done;) {
           var currentTeam = _step.value;
-
           if (hasTeamResults(currentTeam)) {
             var found = false;
-
             for (var newTeamIndex = 0; newTeamIndex < newPoolData.teamData.length; ++newTeamIndex) {
               var newTeam = newPoolData.teamData[newTeamIndex];
-
               if (hasSamePlayers(currentTeam, newTeam)) {
                 found = true;
                 newPoolData.teamData[newTeamIndex] = currentTeam;
                 break;
               }
             }
-
             if (!found) {
               newPoolData.teamData.push(currentTeam);
             }
@@ -56851,30 +56918,24 @@ function mergePoolMap(currentPoolMap, newPoolMap) {
     }
   }
 }
-
 function hasTeamResults(teamData) {
   return Object.keys(teamData.judgeData).length > 0;
 }
-
 function hasSamePlayers(teamData1, teamData2) {
   if (teamData1.players.length !== teamData2.players.length) {
     return false;
   }
-
   for (var i = 0; i < teamData1.players.length; ++i) {
     if (teamData1.players[i] !== teamData2.players[i]) {
       return false;
     }
   }
-
   return true;
 }
-
 module.exports.downloadAndReplace = function () {
   if (MainStore.selectedEventKey === undefined) {
     return undefined;
   }
-
   return Common.fetchEx("GET_EVENT_DATA", {
     eventKey: MainStore.selectedEventKey
   }, {}, {
@@ -56889,7 +56950,6 @@ module.exports.downloadAndReplace = function () {
     console.error("Failed to download Event Data: ".concat(error));
   });
 };
-
 module.exports.downloadPlayerAndEventSummaryData = function () {
   return Common.fetchEx("GET_PLAYER_DATA", {}, {}, {
     method: "GET",
@@ -56900,7 +56960,6 @@ module.exports.downloadPlayerAndEventSummaryData = function () {
     MainStore.playerData = data.players;
     console.log("GET_PLAYER_DATA", data.players);
     MainStore.cachedFullNames = [];
-
     for (var id in MainStore.playerData) {
       var playerData = MainStore.playerData[id];
       MainStore.cachedFullNames.push(playerData.firstName + " " + playerData.lastName);
@@ -56915,7 +56974,9 @@ module.exports.downloadPlayerAndEventSummaryData = function () {
       }
     });
   }).then(function (data) {
-    MainStore.eventSummaryData = data.allEventSummaryData; //console.log("GET_EVENT_SUMMARY_DATA", data.allEventSummaryData)
+    MainStore.eventSummaryData = data.allEventSummaryData;
+
+    //console.log("GET_EVENT_SUMMARY_DATA", data.allEventSummaryData)
   })["catch"](function (error) {
     console.error("Failed to download Event data: ".concat(error));
   }).then(function () {
@@ -56932,25 +56993,20 @@ module.exports.downloadPlayerAndEventSummaryData = function () {
     console.error("Failed to download points data: ".concat(error));
   });
 };
-
 module.exports.onEventDataChanged = function () {};
-
 module.exports.saveToLocalStorage = function () {
   localStorage.setItem("eventData", JSON.stringify(MainStore.eventData));
   localStorage.setItem("selectedEventKey", MainStore.selectedEventKey);
 };
-
 module.exports.loadFromLocalStorage = function () {
   MainStore.selectedEventKey = localStorage.getItem("selectedEventKey") || undefined;
   var localStorageEventData = localStorage.getItem("eventData");
   MainStore.eventData = localStorageEventData && JSON.parse(localStorageEventData) || undefined;
-
   if (MainStore.eventData !== undefined) {
     removeBadPoolData(MainStore.eventData.eventData.poolMap);
     Common.updateCachedRegisteredFullNames();
   }
 };
-
 function removeBadPoolData(poolMap) {
   for (var poolKey in poolMap) {
     if (poolKey.startsWith("pool|undefined|")) {
@@ -56958,107 +57014,91 @@ function removeBadPoolData(poolMap) {
     }
   }
 }
-
 module.exports.updateCachedRegisteredFullNames = function () {
   MainStore.cachedRegisteredFullNames = [];
-
   for (var id in MainStore.eventData.eventData.playerData) {
     var playerData = MainStore.playerData[id];
     MainStore.cachedRegisteredFullNames.push(playerData.firstName + " " + playerData.lastName);
   }
 };
-
-module.exports.createNewEventData = function (eventKey, eventName) {
-  var newEventData = {
-    key: eventKey,
-    eventName: eventName,
-    importantVersion: 0,
-    minorVersion: 0,
-    eventData: {
-      playerData: {},
-      divisionData: {},
-      poolMap: {}
-    },
-    eventState: {},
-    controllerState: {},
-    judgesState: {}
-  };
-  MainStore.eventData = newEventData;
-  MainStore.selectedEventKey = eventKey;
-  Common.saveToLocalStorage();
+module.exports.createNewEventData = function (eventKey) {
+  var eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey];
+  if (eventSummaryData !== undefined) {
+    var newEventData = {
+      key: eventKey,
+      eventName: eventSummaryData.eventName,
+      importantVersion: 0,
+      minorVersion: 0,
+      eventData: {
+        playerData: {},
+        divisionData: {},
+        poolMap: {}
+      },
+      eventState: {},
+      controllerState: {},
+      judgesState: {}
+    };
+    MainStore.eventData = newEventData;
+    MainStore.selectedEventKey = eventKey;
+    Common.saveToLocalStorage();
+  } else {
+    alert("Need to select event before creating a new EventData");
+  }
 };
-
 module.exports.makePoolKey = function (eventKey, divisionName, roundName, poolName) {
   return "".concat(poolKeyPrefix).concat(eventKey, "|").concat(divisionName, "|").concat(roundName, "|").concat(poolName);
 };
-
 module.exports.findPlayerByFullName = function (inFullName) {
   for (var key in MainStore.playerData) {
     var playerData = MainStore.playerData[key];
     var fullName = playerData.firstName + " " + playerData.lastName;
-
     if (inFullName === fullName) {
       return playerData;
     }
   }
-
   return undefined;
 };
-
 module.exports.getPlayerNameString = function (playerKey) {
   if (MainStore.playerData === undefined) {
     return "Unknown";
   }
-
   var playerData = MainStore.playerData[playerKey];
   var name = "Unknown";
-
   if (playerData !== undefined) {
     name = "".concat(playerData.firstName, " ").concat(playerData.lastName);
   }
-
   return name;
 };
-
 module.exports.getPlayerNamesString = function (playerKeyArray) {
   if (MainStore.playerData === undefined) {
     return "";
   }
-
   return playerKeyArray.map(function (key) {
     return Common.getPlayerNameString(key);
   }).join(" - ");
 };
-
 module.exports.getPlayerNameString = function (playerKey) {
   if (MainStore.playerData === undefined) {
     return "Unknown";
   }
-
   var playerData = MainStore.playerData[playerKey];
   var name = "Unknown";
-
   if (playerData !== undefined) {
     name = "".concat(playerData.firstName, " ").concat(playerData.lastName);
   }
-
   return name;
 };
-
 module.exports.getSortedJudgeKeyArray = function (poolData) {
   if (poolData === undefined) {
     return [];
   }
-
   var judges = [];
-
   for (var judgeKey in poolData.judges) {
     judges.push({
       judgeKey: judgeKey,
       categoryType: poolData.judges[judgeKey]
     });
   }
-
   judges.sort(function (a, b) {
     if (a.categoryType === b.categoryType) {
       return a.judgeKey.localeCompare(b.judgeKey);
@@ -57070,19 +57110,15 @@ module.exports.getSortedJudgeKeyArray = function (poolData) {
     return data.judgeKey;
   });
 };
-
 module.exports.poolDataContainsCompetitor = function (poolData, competitorKey) {
   if (poolData === undefined) {
     return false;
   }
-
   var _iterator2 = _createForOfIteratorHelper(poolData.teamData),
-      _step2;
-
+    _step2;
   try {
     for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
       var teamData = _step2.value;
-
       if (teamData.players.find(function (key) {
         return key === competitorKey;
       }) !== undefined) {
@@ -57094,26 +57130,20 @@ module.exports.poolDataContainsCompetitor = function (poolData, competitorKey) {
   } finally {
     _iterator2.f();
   }
-
   return false;
 };
-
 module.exports.poolDataContainsJudge = function (poolData, judgeKey) {
   return poolData && poolData.judges[judgeKey] !== undefined;
 };
-
 module.exports.getMissingDivisionName = function () {
   if (MainStore.eventData === undefined) {
     return undefined;
   }
-
   var _iterator3 = _createForOfIteratorHelper(Common.divisionNames),
-      _step3;
-
+    _step3;
   try {
     for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
       var divisionName = _step3.value;
-
       if (MainStore.eventData.eventData.divisionData[divisionName] === undefined) {
         return divisionName;
       }
@@ -57123,24 +57153,18 @@ module.exports.getMissingDivisionName = function () {
   } finally {
     _iterator3.f();
   }
-
   return undefined;
 };
-
 module.exports.getMissingRoundName = function (divisionName) {
   if (MainStore.eventData === undefined) {
     return undefined;
   }
-
   var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
-
   var _iterator4 = _createForOfIteratorHelper(Common.roundNames),
-      _step4;
-
+    _step4;
   try {
     for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
       var roundName = _step4.value;
-
       if (divisionData.roundData[roundName] === undefined) {
         return roundName;
       }
@@ -57150,13 +57174,10 @@ module.exports.getMissingRoundName = function (divisionName) {
   } finally {
     _iterator4.f();
   }
-
   return undefined;
 };
-
 module.exports.divisionHasPools = function (divisionName) {
   var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
-
   if (divisionData && divisionData.roundData) {
     for (var roundName in divisionData.roundData) {
       if (Common.roundHasPools(divisionName, roundName)) {
@@ -57164,44 +57185,33 @@ module.exports.divisionHasPools = function (divisionName) {
       }
     }
   }
-
   return false;
 };
-
 module.exports.roundHasPools = function (divisionName, roundName) {
   var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
   var roundData = divisionData.roundData[roundName];
-
   if (roundData && roundData.poolNames.length > 0) {
     return true;
   }
-
   return false;
 };
-
 module.exports.getPoolData = function (divisionName, roundName, poolName) {
   var poolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, roundName, poolName);
   return MainStore.eventData.eventData.poolMap[poolKey];
 };
-
 module.exports.isPlayerPlayingInOtherPoolInRound = function (playerKey, divisionName, roundName, poolName) {
   var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
   var roundData = divisionData.roundData[roundName];
-
   if (roundData && roundData.poolNames.length === 0) {
     return false;
   }
-
   var _iterator5 = _createForOfIteratorHelper(roundData.poolNames),
-      _step5;
-
+    _step5;
   try {
     for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
       var otherPoolName = _step5.value;
-
       if (otherPoolName !== poolName) {
         var otherPoolData = Common.getPoolData(divisionName, roundName, otherPoolName);
-
         if (Common.poolDataContainsCompetitor(otherPoolData, playerKey)) {
           return true;
         }
@@ -57212,34 +57222,26 @@ module.exports.isPlayerPlayingInOtherPoolInRound = function (playerKey, division
   } finally {
     _iterator5.f();
   }
-
   return false;
 };
-
 module.exports.getPlayerJudgedCount = function (playerKey) {
   var count = 0;
-
   for (var poolKey in MainStore.eventData.eventData.poolMap) {
     var poolData = MainStore.eventData.eventData.poolMap[poolKey];
-
     if (Common.poolDataContainsJudge(poolData, playerKey)) {
       ++count;
     }
   }
-
   return count;
 };
-
 module.exports.getPlayerRankingPointsByRankingName = function (playerKey, rankingName) {
   var pointsData = MainStore.pointsData[rankingName].find(function (data) {
     return data.id === playerKey;
   });
   return pointsData && pointsData.points || 0;
 };
-
 module.exports.getPlayerRankingPointsByDivision = function (playerKey, divisionName) {
   var playerData = MainStore.playerData[playerKey];
-
   switch (divisionName) {
     case "Women Pairs":
       if (playerData.gender === "F") {
@@ -57247,23 +57249,17 @@ module.exports.getPlayerRankingPointsByDivision = function (playerKey, divisionN
       } else {
         return 0;
       }
-
     case "Mixed Pairs":
       if (playerData.gender === "F") {
         return Common.getPlayerRankingPointsByRankingName(playerKey, "ranking-women");
       }
-
   }
-
   return Common.getPlayerRankingPointsByRankingName(playerKey, "ranking-open");
 };
-
 module.exports.getTeamRankingPointsByDivision = function (playerKeys, divisionName) {
   var sum = 0;
-
   var _iterator6 = _createForOfIteratorHelper(playerKeys),
-      _step6;
-
+    _step6;
   try {
     for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
       var playerKey = _step6.value;
@@ -57274,22 +57270,17 @@ module.exports.getTeamRankingPointsByDivision = function (playerKeys, divisionNa
   } finally {
     _iterator6.f();
   }
-
   return sum;
 };
-
 module.exports.getSimilarPlayerDataByName = function (name, nameList) {
   var bestNames = [];
   var maxCount = 10;
-
   var _iterator7 = _createForOfIteratorHelper(nameList),
-      _step7;
-
+    _step7;
   try {
     var _loop = function _loop() {
       var cachedName = _step7.value;
       var similar = StringSimilarity.compareTwoStrings(name, cachedName);
-
       if (similar > 0) {
         if (bestNames.length < maxCount || similar > bestNames[maxCount - 1].score) {
           var index = bestNames.findIndex(function (data) {
@@ -57299,14 +57290,12 @@ module.exports.getSimilarPlayerDataByName = function (name, nameList) {
             name: cachedName,
             score: similar
           });
-
           if (bestNames.length > maxCount) {
             bestNames.pop();
           }
         }
       }
     };
-
     for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
       _loop();
     }
@@ -57315,42 +57304,32 @@ module.exports.getSimilarPlayerDataByName = function (name, nameList) {
   } finally {
     _iterator7.f();
   }
-
   var playerDatas = [];
-
   for (var _i = 0, _bestNames = bestNames; _i < _bestNames.length; _i++) {
     var data = _bestNames[_i];
     playerDatas.push(Common.findPlayerByFullName(data.name));
   }
-
   return playerDatas;
 };
-
 module.exports.getPlaceFromNumber = function (number) {
   switch (number) {
     case 1:
       return "1st";
-
     case 2:
       return "2nd";
-
     case 3:
       return "3rd";
-
     default:
       return "".concat(number, "th");
   }
 };
-
 module.exports.getPreviousRoundName = function (roundName) {
   var index = Common.roundNames.findIndex(function (name) {
     return name === roundName;
   });
-
   if (index < 0) {
     return undefined;
   }
-
   return index + 1 < Common.roundNames.length ? Common.roundNames[index + 1] : undefined;
 };
 
@@ -57375,29 +57354,24 @@ var urls = {
   GET_POINTS_DATA: "https://kvq5a3et4b.execute-api.us-west-2.amazonaws.com/production/downloadLatestPointsData",
   ADD_PLAYER: "https://4wnda3jb78.execute-api.us-west-2.amazonaws.com/production/addPlayer/<firstName>/lastName/<lastName>"
 };
-
 module.exports.buildUrl = function (key, pathParams, queryParams) {
-  var path =  true ? "https://0uzw9x3t5g.execute-api.us-west-2.amazonaws.com" : undefined;
-  path += "/".concat("DEVELOPMENT".toLowerCase());
+  var path =  false ? undefined : "https://w0wkbj0dd9.execute-api.us-west-2.amazonaws.com";
+  path += "/".concat("PRODUCTION".toLowerCase());
   var pathReplaceData = {
     "path": path,
-    "stage": "DEVELOPMENT".toLowerCase()
+    "stage": "PRODUCTION".toLowerCase()
   };
   Object.assign(pathReplaceData, pathParams);
   var url = urls[key];
-
   for (var wildName in pathReplaceData) {
     url = url.replace("<".concat(wildName, ">"), pathReplaceData[wildName]);
   }
-
   var firstQueryParam = true;
-
   for (var paramName in queryParams) {
     var prefix = firstQueryParam ? "?" : "&";
     firstQueryParam = false;
     url += "".concat(prefix).concat(paramName, "=").concat(queryParams[paramName]);
   }
-
   return url;
 };
 
@@ -57414,78 +57388,49 @@ module.exports.buildUrl = function (key, pathParams, queryParams) {
 /* eslint-disable no-alert */
 
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
-
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, _toPropertyKey(descriptor.key), descriptor); } }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
-
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 var React = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
 var ReactDOM = __webpack_require__(/*! react-dom */ "./node_modules/react-dom/index.js");
-
 var MobxReact = __webpack_require__(/*! mobx-react */ "./node_modules/mobx-react/index.module.js");
-
 var ReactSelect = __webpack_require__(/*! react-select */ "./node_modules/react-select/dist/react-select.esm.js")["default"];
-
 var _require = __webpack_require__(/*! mobx */ "./node_modules/mobx/lib/mobx.module.js"),
-    runInAction = _require.runInAction;
-
+  runInAction = _require.runInAction;
 var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js");
-
 var Common = __webpack_require__(/*! common.js */ "./source/common.js");
-
 var PlayersMainWidget = __webpack_require__(/*! playersMainWidget.js */ "./source/playersMainWidget.js");
-
 var PlayersSideWidget = __webpack_require__(/*! playersSideWidget.js */ "./source/playersSideWidget.js");
-
 __webpack_require__(/*! index.less */ "./source/index.less");
-
 var collapseCallbacks = [];
-
 function registerCollapseCallback(callback) {
   collapseCallbacks.push(callback);
 }
-
 var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   _inherits(EventCreator, _React$Component);
-
   var _super = _createSuper(EventCreator);
-
   function EventCreator() {
     var _this;
-
     _classCallCheck(this, EventCreator);
-
     _this = _super.call(this);
     Common.downloadPlayerAndEventSummaryData().then(function () {
       Common.loadFromLocalStorage();
     });
     return _this;
   }
-
   _createClass(EventCreator, [{
     key: "saveAndUpload",
     value: function saveAndUpload() {
@@ -57495,38 +57440,26 @@ var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) 
   }, {
     key: "collapseAll",
     value: function collapseAll() {
-      var _iterator = _createForOfIteratorHelper(collapseCallbacks),
-          _step;
-
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var callback = _step.value;
-
-          if (callback !== undefined) {
-            // eslint-disable-next-line callback-return
-            callback();
-          }
+      for (var _i = 0, _collapseCallbacks = collapseCallbacks; _i < _collapseCallbacks.length; _i++) {
+        var callback = _collapseCallbacks[_i];
+        if (callback !== undefined) {
+          // eslint-disable-next-line callback-return
+          callback();
         }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
       }
-
       document.getElementById("scrollContainer").scrollTop = 0;
     }
   }, {
     key: "render",
     value: function render() {
       var _this2 = this;
-
       return /*#__PURE__*/React.createElement("div", {
         className: "topContainer"
       }, /*#__PURE__*/React.createElement("div", {
         className: "menu"
       }, /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
-          return Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName);
+          return Common.createNewEventData(MainStore.selectedEventKey);
         }
       }, "New"), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
@@ -57558,25 +57491,19 @@ var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) 
       }, /*#__PURE__*/React.createElement(PlayersMainWidget, null), /*#__PURE__*/React.createElement(DivisionListWidget, null)))));
     }
   }]);
-
   return EventCreator;
 }(React.Component));
 var EventWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) {
   _inherits(EventWidget, _React$Component2);
-
   var _super2 = _createSuper(EventWidget);
-
   function EventWidget() {
     _classCallCheck(this, EventWidget);
-
     return _super2.call(this);
   }
-
   _createClass(EventWidget, [{
     key: "onSelectEventChanged",
     value: function onSelectEventChanged(selected) {
       MainStore.selectedEventKey = selected.value;
-
       if (MainStore.eventData !== undefined) {
         MainStore.eventData.eventName = selected.label;
       }
@@ -57585,23 +57512,18 @@ var EventWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) 
     key: "render",
     value: function render() {
       var _this3 = this;
-
       if (MainStore.eventSummaryData === undefined) {
         return /*#__PURE__*/React.createElement("h1", null, "No Event Summary Data");
       }
-
       var selectedEventValue = null;
       var eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey];
-
       if (eventSummaryData !== undefined) {
         selectedEventValue = {
           value: eventSummaryData.key,
           label: eventSummaryData.eventName
         };
       }
-
       var eventSummaryOptions = [];
-
       for (var eventKey in MainStore.eventSummaryData) {
         var data = MainStore.eventSummaryData[eventKey];
         eventSummaryOptions.push({
@@ -57609,7 +57531,6 @@ var EventWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) 
           label: data.eventName
         });
       }
-
       return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("form", null, /*#__PURE__*/React.createElement("label", null, "Select Event: ", /*#__PURE__*/React.createElement(ReactSelect, {
         value: selectedEventValue,
         options: eventSummaryOptions,
@@ -57619,20 +57540,15 @@ var EventWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) 
       }))));
     }
   }]);
-
   return EventWidget;
 }(React.Component));
 var DivisionListWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component3) {
   _inherits(DivisionListWidget, _React$Component3);
-
   var _super3 = _createSuper(DivisionListWidget);
-
   function DivisionListWidget() {
     _classCallCheck(this, DivisionListWidget);
-
     return _super3.call(this);
   }
-
   _createClass(DivisionListWidget, [{
     key: "onAddDivision",
     value: function onAddDivision() {
@@ -57649,27 +57565,22 @@ var DivisionListWidget = MobxReact.observer( /*#__PURE__*/function (_React$Compo
     value: function getDivisionWidgets() {
       var eventData = MainStore.eventData;
       var divisionData = eventData && eventData.eventData && eventData.eventData.divisionData;
-
       if (divisionData === undefined) {
         return null;
       }
-
       var divisionWidgets = [];
-
       for (var divisionName in divisionData) {
         divisionWidgets.push( /*#__PURE__*/React.createElement(DivisionWidget, {
           key: divisionName,
           divisionData: divisionData[divisionName]
         }));
       }
-
       return divisionWidgets;
     }
   }, {
     key: "render",
     value: function render() {
       var _this4 = this;
-
       return /*#__PURE__*/React.createElement("div", {
         className: "divisionListWidget"
       }, /*#__PURE__*/React.createElement("button", {
@@ -57681,19 +57592,14 @@ var DivisionListWidget = MobxReact.observer( /*#__PURE__*/function (_React$Compo
       }, "Add Division"), /*#__PURE__*/React.createElement("h3", null, "Divisions"), this.getDivisionWidgets());
     }
   }]);
-
   return DivisionListWidget;
 }(React.Component));
 var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component4) {
   _inherits(DivisionWidget, _React$Component4);
-
   var _super4 = _createSuper(DivisionWidget);
-
   function DivisionWidget(props) {
     var _this5;
-
     _classCallCheck(this, DivisionWidget);
-
     _this5 = _super4.call(this, props);
     _this5.state = {
       isTeamWidgetEnabled: false,
@@ -57705,12 +57611,10 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     };
     registerCollapseCallback(function () {
       _this5.state.isTeamWidgetEnabled = false;
-
       _this5.setState(_this5.state);
     });
     return _this5;
   }
-
   _createClass(DivisionWidget, [{
     key: "onAddRound",
     value: function onAddRound() {
@@ -57727,9 +57631,7 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       if (this.props.divisionData === undefined) {
         return null;
       }
-
       var roundWidgets = [];
-
       for (var roundName in this.props.divisionData.roundData) {
         var roundData = this.props.divisionData.roundData[roundName];
         roundWidgets.push( /*#__PURE__*/React.createElement(RoundWidget, {
@@ -57738,7 +57640,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
           divisionData: this.props.divisionData
         }));
       }
-
       return roundWidgets;
     }
   }, {
@@ -57753,23 +57654,19 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       this.state.inputTeamsText = e.target.value;
       this.state.parsedTeamState = [];
       var lines = this.state.inputTeamsText.split("\n");
-
-      var _iterator2 = _createForOfIteratorHelper(lines),
-          _step2;
-
+      var _iterator = _createForOfIteratorHelper(lines),
+        _step;
       try {
-        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-          var line = _step2.value;
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var line = _step.value;
           var teamState = [];
           this.state.parsedTeamState.push(teamState);
           var names = line.split("_");
-
-          var _iterator3 = _createForOfIteratorHelper(names),
-              _step3;
-
+          var _iterator2 = _createForOfIteratorHelper(names),
+            _step2;
           try {
-            for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-              var name = _step3.value;
+            for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+              var name = _step2.value;
               var candidatePlayerData = Common.getSimilarPlayerDataByName(name.trim(), MainStore.cachedRegisteredFullNames);
               var options = candidatePlayerData.map(function (playerData) {
                 return {
@@ -57789,17 +57686,16 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
               });
             }
           } catch (err) {
-            _iterator3.e(err);
+            _iterator2.e(err);
           } finally {
-            _iterator3.f();
+            _iterator2.f();
           }
         }
       } catch (err) {
-        _iterator2.e(err);
+        _iterator.e(err);
       } finally {
-        _iterator2.f();
+        _iterator.f();
       }
-
       this.setState(this.state);
     }
   }, {
@@ -57822,28 +57718,23 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "getParsedTeamWidgets",
     value: function getParsedTeamWidgets() {
       var _this6 = this;
-
       var widgets = [];
-
-      var _iterator4 = _createForOfIteratorHelper(this.state.parsedTeamState),
-          _step4;
-
+      var _iterator3 = _createForOfIteratorHelper(this.state.parsedTeamState),
+        _step3;
       try {
         var _loop = function _loop() {
-          var teamState = _step4.value;
+          var teamState = _step3.value;
           var nameWidgets = [/*#__PURE__*/React.createElement("button", {
             key: Math.random(),
             onClick: function onClick() {
               return _this6.onAddNewTeam(teamState);
             }
           }, "Add Team")];
-
-          var _iterator5 = _createForOfIteratorHelper(teamState),
-              _step5;
-
+          var _iterator4 = _createForOfIteratorHelper(teamState),
+            _step4;
           try {
             var _loop2 = function _loop2() {
-              var nameState = _step5.value;
+              var nameState = _step4.value;
               nameWidgets.push( /*#__PURE__*/React.createElement(ReactSelect, {
                 key: Math.random(),
                 value: nameState.value,
@@ -57853,31 +57744,27 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
                 }
               }));
             };
-
-            for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+            for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
               _loop2();
             }
           } catch (err) {
-            _iterator5.e(err);
+            _iterator4.e(err);
           } finally {
-            _iterator5.f();
+            _iterator4.f();
           }
-
           widgets.push( /*#__PURE__*/React.createElement("div", {
             key: Math.random(),
             className: "team"
           }, nameWidgets));
         };
-
-        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
           _loop();
         }
       } catch (err) {
-        _iterator4.e(err);
+        _iterator3.e(err);
       } finally {
-        _iterator4.f();
+        _iterator3.f();
       }
-
       return widgets;
     }
   }, {
@@ -57886,7 +57773,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       var index = this.props.divisionData.teams.findIndex(function (item) {
         return item === playerKeys;
       });
-
       if (index >= 0) {
         this.props.divisionData.teams.splice(index, 1);
         this.setState(this.state);
@@ -57896,11 +57782,9 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "getAllTeamsListWidget",
     value: function getAllTeamsListWidget() {
       var _this7 = this;
-
       if (this.props.divisionData.teams === undefined) {
         return null;
       }
-
       return this.props.divisionData.teams.map(function (playerKeys, index) {
         return /*#__PURE__*/React.createElement("div", {
           key: Math.random()
@@ -57915,7 +57799,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "getTeamsWidget",
     value: function getTeamsWidget() {
       var _this8 = this;
-
       if (this.state.isTeamWidgetEnabled !== true) {
         return /*#__PURE__*/React.createElement("div", {
           className: "teamsWidget"
@@ -57952,7 +57835,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "onDivisionNameChanged",
     value: function onDivisionNameChanged(e) {
       var _this9 = this;
-
       if (this.state.divisionName !== e.target.value) {
         runInAction(function () {
           var newDivisionData = Object.assign({}, MainStore.eventData.eventData.divisionData);
@@ -57967,16 +57849,12 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "getDivisionNameWidget",
     value: function getDivisionNameWidget() {
       var _this10 = this;
-
       var options = [];
-
-      var _iterator6 = _createForOfIteratorHelper(Common.divisionNames),
-          _step6;
-
+      var _iterator5 = _createForOfIteratorHelper(Common.divisionNames),
+        _step5;
       try {
-        for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-          var divisionName = _step6.value;
-
+        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+          var divisionName = _step5.value;
           if (divisionName === this.state.divisionName || MainStore.eventData.eventData.divisionData[divisionName] === undefined) {
             options.push( /*#__PURE__*/React.createElement("option", {
               key: divisionName,
@@ -57985,11 +57863,10 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
           }
         }
       } catch (err) {
-        _iterator6.e(err);
+        _iterator5.e(err);
       } finally {
-        _iterator6.f();
+        _iterator5.f();
       }
-
       return /*#__PURE__*/React.createElement("select", {
         value: this.state.divisionName,
         disabled: Common.divisionHasPools(this.state.divisionName),
@@ -58007,12 +57884,10 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "onDivisionRulesChanged",
     value: function onDivisionRulesChanged(e) {
       var _this11 = this;
-
       if (this.state.rulesId !== e.target.value) {
         runInAction(function () {
           MainStore.eventData.eventData.divisionData[_this11.state.divisionName].rulesId = e.target.value;
           _this11.state.rulesId = e.target.value;
-
           _this11.setState(_this11.state);
         });
       }
@@ -58021,7 +57896,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "getDivisionRulesWidget",
     value: function getDivisionRulesWidget() {
       var _this12 = this;
-
       return /*#__PURE__*/React.createElement("select", {
         value: this.state.rulesId,
         onChange: function onChange(e) {
@@ -58039,7 +57913,6 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
     key: "render",
     value: function render() {
       var _this13 = this;
-
       return /*#__PURE__*/React.createElement("div", {
         className: "divisionWidget"
       }, this.getDivisionNameWidget(), this.getDivisionRulesWidget(), /*#__PURE__*/React.createElement("button", {
@@ -58057,19 +57930,14 @@ var DivisionWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component
       }, "Add Round"), this.getTeamsWidget(), "Rounds", this.getRoundWidgets()));
     }
   }]);
-
   return DivisionWidget;
 }(React.Component));
 var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) {
   _inherits(RoundWidget, _React$Component5);
-
   var _super5 = _createSuper(RoundWidget);
-
   function RoundWidget(props) {
     var _this14;
-
     _classCallCheck(this, RoundWidget);
-
     _this14 = _super5.call(this, props);
     _this14.state = {
       roundName: _this14.props.roundData && _this14.props.roundData.name,
@@ -58078,12 +57946,10 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     };
     registerCollapseCallback(function () {
       _this14.state.isRoundWidgetEnabled = false;
-
       _this14.setState(_this14.state);
     });
     return _this14;
   }
-
   _createClass(RoundWidget, [{
     key: "onAddPool",
     value: function onAddPool() {
@@ -58093,7 +57959,6 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "getPoolWidgets",
     value: function getPoolWidgets() {
       var _this15 = this;
-
       return this.props.roundData.poolNames.map(function (name, i) {
         var poolKey = Common.makePoolKey(MainStore.eventData.key, _this15.props.divisionData.name, _this15.props.roundData.name, name);
         return /*#__PURE__*/React.createElement(PoolWidget, {
@@ -58109,7 +57974,6 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "onRoundNameChanged",
     value: function onRoundNameChanged(e) {
       var _this16 = this;
-
       if (this.state.roundName !== e.target.value) {
         runInAction(function () {
           var newDivisionData = Object.assign({}, _this16.props.divisionData);
@@ -58118,7 +57982,6 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
           delete newDivisionData.roundData[_this16.state.roundName];
           MainStore.eventData.eventData.divisionData[_this16.props.divisionData.name] = newDivisionData;
           _this16.state.roundName = e.target.value;
-
           _this16.setState(_this16.state);
         });
       }
@@ -58127,20 +57990,15 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "getRoundNameWidget",
     value: function getRoundNameWidget() {
       var _this17 = this;
-
       if (this.props.divisionData === undefined) {
         return null;
       }
-
       var options = [];
-
-      var _iterator7 = _createForOfIteratorHelper(Common.roundNames),
-          _step7;
-
+      var _iterator6 = _createForOfIteratorHelper(Common.roundNames),
+        _step6;
       try {
-        for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-          var roundName = _step7.value;
-
+        for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+          var roundName = _step6.value;
           if (roundName === this.state.roundName || this.props.divisionData.roundData[roundName] === undefined) {
             options.push( /*#__PURE__*/React.createElement("option", {
               key: roundName,
@@ -58149,11 +58007,10 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
           }
         }
       } catch (err) {
-        _iterator7.e(err);
+        _iterator6.e(err);
       } finally {
-        _iterator7.f();
+        _iterator6.f();
       }
-
       return /*#__PURE__*/React.createElement("select", {
         value: this.state.roundName,
         disabled: Common.roundHasPools(this.props.divisionData.name, this.state.roundName),
@@ -58173,7 +58030,6 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "getRoutineLengthWidget",
     value: function getRoutineLengthWidget() {
       var _this18 = this;
-
       var options = [/*#__PURE__*/React.createElement("option", {
         key: 2,
         value: 120
@@ -58205,18 +58061,15 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "seedRoundFromRankings",
     value: function seedRoundFromRankings() {
       var _this19 = this;
-
       var roundData = this.props.roundData;
       var sortedTeams = this.props.divisionData.teams.slice().sort(function (a, b) {
         return Common.getTeamRankingPointsByDivision(a, _this19.props.divisionData.name) - Common.getTeamRankingPointsByDivision(b, _this19.props.divisionData.name);
       });
-
       if (this.props.roundData.name === Common.roundNames[0]) {
         if (roundData.poolNames.length !== 1) {
           alert("Trying to seed Finals round, but there are ${roundData.poolNames.length} pools instead of 1");
           return;
         }
-
         var poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, roundData.name, roundData.poolNames[0]);
         var poolData = MainStore.eventData.eventData.poolMap[poolKey];
         poolData.teamData = sortedTeams.map(function (players) {
@@ -58230,43 +58083,35 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
           alert("Need at least 1 pool to see Semifinals");
           return;
         }
-
         var poolDatas = roundData.poolNames.map(function (poolName) {
           var poolKey = Common.makePoolKey(MainStore.eventData.key, _this19.props.divisionData.name, roundData.name, poolName);
           return MainStore.eventData.eventData.poolMap[poolKey];
         });
-
-        var _iterator8 = _createForOfIteratorHelper(poolDatas),
-            _step8;
-
+        var _iterator7 = _createForOfIteratorHelper(poolDatas),
+          _step7;
         try {
-          for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-            var _poolData2 = _step8.value;
+          for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+            var _poolData2 = _step7.value;
             _poolData2.teamData = [];
           }
         } catch (err) {
-          _iterator8.e(err);
+          _iterator7.e(err);
         } finally {
-          _iterator8.f();
+          _iterator7.f();
         }
-
         var teamIndex = sortedTeams.length - 1;
         var dir = 1;
-
         while (teamIndex >= 0) {
           for (var i = 0; i < poolDatas.length && teamIndex >= 0; ++i) {
             var poolIndex = dir > 0 ? i : poolDatas.length - 1 - i;
             var players = sortedTeams[teamIndex];
             var _poolData = poolDatas[poolIndex];
-
             _poolData.teamData.splice(0, 0, {
               players: players,
               judgeData: {}
             });
-
             --teamIndex;
           }
-
           dir *= -1;
         }
       }
@@ -58276,17 +58121,13 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     value: function seedRoundFromPreviousRound() {
       // Only works for finals for now
       var roundData = this.props.roundData;
-
       if (roundData.name !== "Finals") {
         return;
       }
-
       var previousRoundName = Common.getPreviousRoundName(roundData.name);
-
       if (previousRoundName === undefined) {
         return;
       }
-
       var divisionName = this.props.divisionData.name;
       var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
       var maxTeamCount = divisionData.roundData[previousRoundName].poolNames.length === 3 ? 9 : 8;
@@ -58305,66 +58146,49 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
             return b.teamScore - a.teamScore;
           }
         });
-        console.log(sortedTeams.map(function (team) {
-          return Common.getPlayerNamesString(team.players);
-        }));
         return sortedTeams.map(function (teamData) {
           return teamData.players;
         });
       });
-      console.log(sortedTeamsFromResults.map(function (teams) {
-        return teams.map(function (team) {
-          return Common.getPlayerNamesString(team);
-        });
-      }));
       var smallestPoolTeamCount = Number.MAX_SAFE_INTEGER;
-
-      var _iterator9 = _createForOfIteratorHelper(sortedTeamsFromResults),
-          _step9;
-
+      var _iterator8 = _createForOfIteratorHelper(sortedTeamsFromResults),
+        _step8;
       try {
-        for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-          var _teams = _step9.value;
+        for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
+          var _teams = _step8.value;
           smallestPoolTeamCount = Math.min(smallestPoolTeamCount, _teams.length);
         }
       } catch (err) {
-        _iterator9.e(err);
+        _iterator8.e(err);
       } finally {
-        _iterator9.f();
+        _iterator8.f();
       }
-
       var finalsPoolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, "Finals", "A");
       var finalsPoolData = MainStore.eventData.eventData.poolMap[finalsPoolKey];
       finalsPoolData.teamData = [];
-
       for (var i = 0; i < smallestPoolTeamCount; ++i) {
         var placeTeams = [];
-
-        var _iterator10 = _createForOfIteratorHelper(sortedTeamsFromResults),
-            _step10;
-
+        var _iterator9 = _createForOfIteratorHelper(sortedTeamsFromResults),
+          _step9;
         try {
-          for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-            var teams = _step10.value;
+          for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+            var teams = _step9.value;
             placeTeams.push(teams[i]);
           }
         } catch (err) {
-          _iterator10.e(err);
+          _iterator9.e(err);
         } finally {
-          _iterator10.f();
+          _iterator9.f();
         }
-
         placeTeams.sort(function (a, b) {
           return Common.getTeamRankingPointsByDivision(b, divisionName) - Common.getTeamRankingPointsByDivision(a, divisionName);
         });
-
-        for (var _i = 0, _placeTeams = placeTeams; _i < _placeTeams.length; _i++) {
-          var team = _placeTeams[_i];
+        for (var _i2 = 0, _placeTeams = placeTeams; _i2 < _placeTeams.length; _i2++) {
+          var team = _placeTeams[_i2];
           finalsPoolData.teamData.splice(0, 0, {
             players: team,
             judgeData: {}
           });
-
           if (finalsPoolData.teamData.length >= maxTeamCount) {
             return;
           }
@@ -58381,7 +58205,6 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
     key: "render",
     value: function render() {
       var _this20 = this;
-
       if (this.state.isRoundWidgetEnabled) {
         return /*#__PURE__*/React.createElement("div", {
           className: "roundWidget"
@@ -58415,19 +58238,14 @@ var RoundWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component5) 
       }
     }
   }]);
-
   return RoundWidget;
 }(React.Component));
 var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
   _inherits(PoolWidget, _React$Component6);
-
   var _super6 = _createSuper(PoolWidget);
-
   function PoolWidget(props) {
     var _this21;
-
     _classCallCheck(this, PoolWidget);
-
     _this21 = _super6.call(this, props);
     MainStore.eventData.eventData.poolMap[_this21.props.poolKey] = MainStore.eventData.eventData.poolMap[_this21.props.poolKey] || {
       key: _this21.props.poolKey,
@@ -58439,12 +58257,10 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     };
     registerCollapseCallback(function () {
       _this21.state.isJudgesWidgetEnabled = false;
-
       _this21.setState(_this21.state);
     });
     return _this21;
   }
-
   _createClass(PoolWidget, [{
     key: "onAddTeam",
     value: function onAddTeam(e) {}
@@ -58452,50 +58268,41 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "getAddTeamOptions",
     value: function getAddTeamOptions() {
       var _this22 = this;
-
       var divisionData = MainStore.eventData.eventData.divisionData[this.props.divisionName];
-
       if (divisionData === undefined || divisionData.teams === undefined) {
         return [];
       }
-
       var poolDatas = this.props.roundData.poolNames.map(function (poolName) {
         return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, _this22.props.divisionName, _this22.props.roundData.name, poolName)];
       }).filter(function (item) {
         return item !== undefined;
       });
       var options = [];
-
-      var _iterator11 = _createForOfIteratorHelper(divisionData.teams),
-          _step11;
-
+      var _iterator10 = _createForOfIteratorHelper(divisionData.teams),
+        _step10;
       try {
         var _loop3 = function _loop3() {
-          var team = _step11.value;
+          var team = _step10.value;
           var teamExists = false;
-
-          var _iterator12 = _createForOfIteratorHelper(poolDatas),
-              _step12;
-
+          var _iterator11 = _createForOfIteratorHelper(poolDatas),
+            _step11;
           try {
-            for (_iterator12.s(); !(_step12 = _iterator12.n()).done;) {
-              var poolData = _step12.value;
+            for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
+              var poolData = _step11.value;
               teamExists = poolData.teamData.find(function (teamData) {
                 return teamData.players.find(function (playerKey) {
                   return team[0] === playerKey;
                 }) !== undefined;
               }) !== undefined;
-
               if (teamExists) {
                 break;
               }
             }
           } catch (err) {
-            _iterator12.e(err);
+            _iterator11.e(err);
           } finally {
-            _iterator12.f();
+            _iterator11.f();
           }
-
           if (!teamExists) {
             options.push({
               value: team,
@@ -58503,16 +58310,14 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
             });
           }
         };
-
-        for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
+        for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
           _loop3();
         }
       } catch (err) {
-        _iterator11.e(err);
+        _iterator10.e(err);
       } finally {
-        _iterator11.f();
+        _iterator10.f();
       }
-
       return options;
     }
   }, {
@@ -58535,11 +58340,9 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     value: function moveTeam(index, dir) {
       var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
       var newIndex = index + dir;
-
       if (newIndex < 0 || newIndex >= poolData.teamData.length) {
         return;
       }
-
       var temp = poolData.teamData[newIndex];
       poolData.teamData[newIndex] = poolData.teamData[index];
       poolData.teamData[index] = temp;
@@ -58548,28 +58351,23 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "getTeamsWidget",
     value: function getTeamsWidget() {
       var _this23 = this;
-
-      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]; // Does not support ties
-
+      var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      // Does not support ties
       var sortedScores = [];
-
-      var _iterator13 = _createForOfIteratorHelper(poolData.teamData),
-          _step13;
-
+      var _iterator12 = _createForOfIteratorHelper(poolData.teamData),
+        _step12;
       try {
-        for (_iterator13.s(); !(_step13 = _iterator13.n()).done;) {
-          var teamData = _step13.value;
-
+        for (_iterator12.s(); !(_step12 = _iterator12.n()).done;) {
+          var teamData = _step12.value;
           if (teamData.teamScore !== undefined) {
             sortedScores.push(teamData.teamScore);
           }
         }
       } catch (err) {
-        _iterator13.e(err);
+        _iterator12.e(err);
       } finally {
-        _iterator13.f();
+        _iterator12.f();
       }
-
       sortedScores.sort(function (a, b) {
         return b - a;
       });
@@ -58578,7 +58376,6 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
           return score === teamData.teamScore;
         });
         var teamRank = sortedScoreIndex >= 0 ? sortedScoreIndex + 1 : undefined;
-
         if (teamRank !== undefined) {
           return /*#__PURE__*/React.createElement("div", {
             key: Math.random(),
@@ -58623,23 +58420,19 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "getJudgeSelectWidget",
     value: function getJudgeSelectWidget() {
       var _this24 = this;
-
       var judgeWidgets = [];
       var filteredPlayerKeys = [];
       var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
-
       for (var playerKey in MainStore.eventData.eventData.playerData) {
         if (!Common.poolDataContainsCompetitor(poolData, playerKey) && !Common.poolDataContainsJudge(poolData, playerKey)) {
           filteredPlayerKeys.push(playerKey);
         }
       }
-
       filteredPlayerKeys.sort(function (a, b) {
         return Common.getPlayerRankingPointsByDivision(b) - Common.getPlayerRankingPointsByDivision(a);
       });
-
       var _loop4 = function _loop4() {
-        var playerKey = _filteredPlayerKeys[_i2];
+        var playerKey = _filteredPlayerKeys[_i3];
         var playerData = MainStore.playerData[playerKey];
         var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, _this24.props.divisionName, _this24.props.roundData.name, _this24.props.poolName);
         var title = isPlayingInOtherPool ? "Playing in other Pool" : undefined;
@@ -58668,11 +58461,9 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
           className: "count"
         }, Common.getPlayerJudgedCount(playerKey))));
       };
-
-      for (var _i2 = 0, _filteredPlayerKeys = filteredPlayerKeys; _i2 < _filteredPlayerKeys.length; _i2++) {
+      for (var _i3 = 0, _filteredPlayerKeys = filteredPlayerKeys; _i3 < _filteredPlayerKeys.length; _i3++) {
         _loop4();
       }
-
       if (this.state.isJudgesWidgetEnabled) {
         return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           className: "selectJudges",
@@ -58699,7 +58490,6 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "getJudgesWidget",
     value: function getJudgesWidget() {
       var _this25 = this;
-
       var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
       var judgeKeys = Common.getSortedJudgeKeyArray(poolData);
       var judgeWidgets = judgeKeys.map(function (key) {
@@ -58723,7 +58513,6 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "onDeletePool",
     value: function onDeletePool() {
       var _this26 = this;
-
       var index = this.props.roundData.poolNames.findIndex(function (name) {
         return name === _this26.props.poolName;
       });
@@ -58734,7 +58523,6 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
     key: "render",
     value: function render() {
       var _this27 = this;
-
       return /*#__PURE__*/React.createElement("div", {
         className: "poolWidget"
       }, "".concat(this.props.divisionName, " ").concat(this.props.roundData.name, " ").concat(this.props.poolName), /*#__PURE__*/React.createElement("button", {
@@ -58754,7 +58542,6 @@ var PoolWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component6) {
       }, this.getJudgeSelectWidget(), this.getJudgesWidget()));
     }
   }]);
-
   return PoolWidget;
 }(React.Component));
 ReactDOM.render( /*#__PURE__*/React.createElement(EventCreator, null), document.getElementById("mount"));
@@ -58803,7 +58590,6 @@ if(false) {}
 
 
 var Mobx = __webpack_require__(/*! mobx */ "./node_modules/mobx/lib/mobx.module.js");
-
 module.exports = Mobx.observable({
   selectedEventKey: undefined,
   eventData: undefined,
@@ -58828,54 +58614,33 @@ module.exports = Mobx.observable({
 /* eslint-disable no-loop-func */
 
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
-
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, _toPropertyKey(descriptor.key), descriptor); } }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
-
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 var React = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
 var MobxReact = __webpack_require__(/*! mobx-react */ "./node_modules/mobx-react/index.module.js");
-
 var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js");
-
 var Common = __webpack_require__(/*! common.js */ "./source/common.js");
-
 __webpack_require__(/*! playersMainWidget.less */ "./source/playersMainWidget.less");
-
 module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   _inherits(PlayerMainWidget, _React$Component);
-
   var _super = _createSuper(PlayerMainWidget);
-
   function PlayerMainWidget() {
     var _this;
-
     _classCallCheck(this, PlayerMainWidget);
-
     _this = _super.call(this);
     _this.state = {
       inputText: "",
@@ -58883,25 +58648,20 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
     };
     return _this;
   }
-
   _createClass(PlayerMainWidget, [{
     key: "onInputTextChanged",
     value: function onInputTextChanged(e) {
       this.state.inputText = e.target.value;
       this.state.inputPlayerMatches = [];
       var lines = this.state.inputText.split("\n");
-
       var _iterator = _createForOfIteratorHelper(lines),
-          _step;
-
+        _step;
       try {
         for (_iterator.s(); !(_step = _iterator.n()).done;) {
           var line = _step.value;
           line = line.trim();
-
           if (line.length > 0) {
             var playerData = Common.findPlayerByFullName(line);
-
             if (playerData !== undefined) {
               this.state.inputPlayerMatches.push({
                 key: playerData.key,
@@ -58924,7 +58684,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       } finally {
         _iterator.f();
       }
-
       this.updatePlayerMatches();
       this.setState(this.state);
     }
@@ -58937,13 +58696,11 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
         } else if (!a.isAdded && b.isAdded) {
           return -1;
         }
-
         if (a.isExactMatch && !b.isExactMatch) {
           return -1;
         } else if (!a.isExactMatch && b.isExactMatch) {
           return 1;
         }
-
         return 0;
       });
       this.setState(this.state);
@@ -58967,7 +58724,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       if (this.isPlayerAdded(matchData.key)) {
         return;
       }
-
       matchData.isAdded = true;
       MainStore.eventData.eventData.playerData[matchData.key] = {
         key: matchData.key,
@@ -58979,14 +58735,11 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
     key: "onAddAllExactMatches",
     value: function onAddAllExactMatches(event) {
       event.preventDefault();
-
       var _iterator2 = _createForOfIteratorHelper(this.state.inputPlayerMatches),
-          _step2;
-
+        _step2;
       try {
         for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
           var data = _step2.value;
-
           if (data.isExactMatch) {
             this.addExactMatch(data);
           }
@@ -59023,14 +58776,12 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       if (MainStore.eventData === undefined) {
         return false;
       }
-
       return MainStore.eventData.eventData.playerData[playerKey] !== undefined;
     }
   }, {
     key: "onAddNewPlayer",
     value: function onAddNewPlayer(firstName, lastName, matchData) {
       var _this2 = this;
-
       Common.fetchEx("ADD_PLAYER", {
         firstName: firstName,
         lastName: lastName
@@ -59043,7 +58794,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
         MainStore.playerData[data.addedPlayer.key] = data.addedPlayer;
         matchData.isAdded = true;
         matchData.key = data.addedPlayer.key;
-
         _this2.addExactMatch(matchData);
       })["catch"](function (error) {
         console.error("Failed to Add New Player: ".concat(error));
@@ -59053,7 +58803,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
     key: "getPlayerMatches",
     value: function getPlayerMatches() {
       var _this3 = this;
-
       return this.state.inputPlayerMatches.map(function (data, i) {
         if (data.isFinding === true) {
           var candidatePlayerData = Common.getSimilarPlayerDataByName(data.fullName, MainStore.cachedFullNames);
@@ -59111,11 +58860,9 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var _this4 = this;
-
       if (MainStore.isPlayerMainWidgetEnabled !== true) {
         return null;
       }
-
       return /*#__PURE__*/React.createElement("div", {
         className: "playerMainWidget"
       }, /*#__PURE__*/React.createElement("h3", null, "Add Players"), /*#__PURE__*/React.createElement("label", null, "One Name Per Line. Example: Ryan Young", /*#__PURE__*/React.createElement("textarea", {
@@ -59131,19 +58878,14 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       }, "Add All Exact Matches")), this.getPlayerMatches());
     }
   }]);
-
   return PlayerMainWidget;
 }(React.Component));
 var NewPlayerWidget = MobxReact.observer( /*#__PURE__*/function (_React$Component2) {
   _inherits(NewPlayerWidget, _React$Component2);
-
   var _super2 = _createSuper(NewPlayerWidget);
-
   function NewPlayerWidget() {
     var _this5;
-
     _classCallCheck(this, NewPlayerWidget);
-
     _this5 = _super2.call(this);
     _this5.state = {
       isEnteringNewPlayer: false,
@@ -59152,19 +58894,15 @@ var NewPlayerWidget = MobxReact.observer( /*#__PURE__*/function (_React$Componen
     };
     return _this5;
   }
-
   _createClass(NewPlayerWidget, [{
     key: "componentDidMount",
     value: function componentDidMount() {
       var nameParts = this.props.matchData.fullName.trim().split(" ");
-
       if (nameParts.length > 0) {
         this.state.firstName = nameParts[0];
-
         if (nameParts.length > 1) {
           this.state.lastName = nameParts.slice(1).join(" ");
         }
-
         this.setState(this.state);
       }
     }
@@ -59199,7 +58937,6 @@ var NewPlayerWidget = MobxReact.observer( /*#__PURE__*/function (_React$Componen
     key: "render",
     value: function render() {
       var _this6 = this;
-
       if (!this.state.isEnteringNewPlayer) {
         return /*#__PURE__*/React.createElement("button", {
           onClick: function onClick(e) {
@@ -59227,7 +58964,6 @@ var NewPlayerWidget = MobxReact.observer( /*#__PURE__*/function (_React$Componen
       }
     }
   }]);
-
   return NewPlayerWidget;
 }(React.Component));
 
@@ -59273,53 +59009,35 @@ if(false) {}
 "use strict";
 
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, _toPropertyKey(descriptor.key), descriptor); } }
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); Object.defineProperty(Constructor, "prototype", { writable: false }); return Constructor; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); Object.defineProperty(subClass, "prototype", { writable: false }); if (superClass) _setPrototypeOf(subClass, superClass); }
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 function _createSuper(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
-
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } else if (call !== void 0) { throw new TypeError("Derived constructors may only return object or undefined"); } return _assertThisInitialized(self); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 var React = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-
 var MobxReact = __webpack_require__(/*! mobx-react */ "./node_modules/mobx-react/index.module.js");
-
 var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js");
-
 var Common = __webpack_require__(/*! common.js */ "./source/common.js");
-
 module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   _inherits(PlayersSideWidget, _React$Component);
-
   var _super = _createSuper(PlayersSideWidget);
-
   function PlayersSideWidget() {
     var _this;
-
     _classCallCheck(this, PlayersSideWidget);
-
     _this = _super.call(this);
     _this.state = {
       isSideWidgetEnabled: false
     };
     return _this;
   }
-
   _createClass(PlayersSideWidget, [{
     key: "onAddPlayersClicked",
     value: function onAddPlayersClicked(e) {
@@ -59331,33 +59049,27 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       if (MainStore.eventData === undefined) {
         return null;
       }
-
       var playerWidgets = [];
       var sortedPlayers = [];
-
       for (var playerKey in MainStore.eventData.eventData.playerData) {
         sortedPlayers.push({
           playerKey: playerKey,
           openPoints: Common.getPlayerRankingPointsByDivision(playerKey, "Open Pairs")
         });
       }
-
       sortedPlayers.sort(function (a, b) {
         return b.openPoints - a.openPoints;
       });
-
       for (var _i = 0, _sortedPlayers = sortedPlayers; _i < _sortedPlayers.length; _i++) {
         var player = _sortedPlayers[_i];
         var _playerKey = player.playerKey;
         var playerData = MainStore.playerData[_playerKey];
-
         if (playerData !== undefined) {
           playerWidgets.push( /*#__PURE__*/React.createElement("div", {
             key: _playerKey
           }, "".concat(playerWidgets.length + 1, ". ").concat(playerData.firstName + " " + playerData.lastName, " ").concat(Common.getPlayerRankingPointsByDivision(_playerKey, "Open Pairs"), " / ").concat(Common.getPlayerRankingPointsByDivision(_playerKey, "Women Pairs"))));
         }
       }
-
       return playerWidgets;
     }
   }, {
@@ -59370,7 +59082,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
     key: "render",
     value: function render() {
       var _this2 = this;
-
       if (this.state.isSideWidgetEnabled) {
         return /*#__PURE__*/React.createElement("div", {
           className: "playersSideWidget"
@@ -59396,7 +59107,6 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       }
     }
   }]);
-
   return PlayersSideWidget;
 }(React.Component));
 

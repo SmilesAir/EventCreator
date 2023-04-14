@@ -1,3 +1,4 @@
+/* eslint-disable no-alert */
 "use strict"
 
 const StringSimilarity = require("string-similarity")
@@ -29,6 +30,14 @@ module.exports.fetchEx = function(key, pathParams, queryParams, options) {
 }
 
 module.exports.uploadEventData = function() {
+    let eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey]
+    if (eventSummaryData === undefined) {
+        alert("Can't find event summary data for selected event")
+    }
+
+    MainStore.eventData.key = MainStore.selectedEventKey
+    MainStore.eventData.eventName = eventSummaryData.eventName
+
     console.log(JSON.parse(JSON.stringify(MainStore.eventData)))
     return Common.fetchEx("IMPORT_EVENT_DATA", { eventKey: MainStore.eventData.key }, undefined, {
         method: "POST",
@@ -210,26 +219,31 @@ module.exports.updateCachedRegisteredFullNames = function() {
     }
 }
 
-module.exports.createNewEventData = function(eventKey, eventName) {
-    let newEventData = {
-        key: eventKey,
-        eventName: eventName,
-        importantVersion: 0,
-        minorVersion: 0,
-        eventData: {
-            playerData: {},
-            divisionData: {},
-            poolMap: {}
-        },
-        eventState: {},
-        controllerState: {},
-        judgesState: {}
+module.exports.createNewEventData = function(eventKey) {
+    let eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey]
+    if (eventSummaryData !== undefined) {
+        let newEventData = {
+            key: eventKey,
+            eventName: eventSummaryData.eventName,
+            importantVersion: 0,
+            minorVersion: 0,
+            eventData: {
+                playerData: {},
+                divisionData: {},
+                poolMap: {}
+            },
+            eventState: {},
+            controllerState: {},
+            judgesState: {}
+        }
+
+        MainStore.eventData = newEventData
+        MainStore.selectedEventKey = eventKey
+
+        Common.saveToLocalStorage()
+    } else {
+        alert("Need to select event before creating a new EventData")
     }
-
-    MainStore.eventData = newEventData
-    MainStore.selectedEventKey = eventKey
-
-    Common.saveToLocalStorage()
 }
 
 module.exports.makePoolKey = function(eventKey, divisionName, roundName, poolName) {

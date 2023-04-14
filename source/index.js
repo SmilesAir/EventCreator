@@ -48,7 +48,7 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
         return (
             <div className="topContainer">
                 <div className="menu">
-                    <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey, MainStore.eventData.eventName)}>New</button>
+                    <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey)}>New</button>
                     <button onClick={() => this.saveAndUpload()}>Save and Upload</button>
                     <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
                     <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
