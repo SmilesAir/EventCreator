@@ -7,6 +7,7 @@ const MainStore = require("mainStore.js")
 const Endpoints = require("endpoints.js")
 
 const poolKeyPrefix = "pool|"
+const dataVersion = 1
 let Common = module.exports
 
 module.exports.divisionNames = [
@@ -66,10 +67,24 @@ module.exports.downloadAndMerge = function() {
         console.log("GET_EVENT_DATA", data)
 
         mergePoolMap(data.eventData.eventData.poolMap, MainStore.eventData.eventData.poolMap)
-
+        mergeEventProperties(data.eventData)
     }).catch((error) => {
         console.error(`Failed to download Event Data: ${error}`)
     })
+}
+
+function mergeEventProperties(newEventData) {
+    let propsToCopy = [
+        "dataVersion",
+        "importantVersion",
+        "minorVersion"
+    ]
+    for (let prop of propsToCopy) {
+        let newProp = newEventData[prop]
+        if (newProp !== undefined) {
+            MainStore.eventData[prop] = newEventData[prop]
+        }
+    }
 }
 
 // Moves data from currentPoolMap into newPoolMap
@@ -186,6 +201,35 @@ module.exports.onEventDataChanged = function() {
 
 }
 
+module.exports.checkVersionAndPrompt = function() {
+    if (MainStore.selectedEventKey === undefined || MainStore.eventData === undefined) {
+        return new Promise()
+    }
+
+    return Common.fetchEx("GET_EVENT_VERSION", {
+        eventKey: MainStore.selectedEventKey
+    }, {}, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    }).then((data) => {
+        if (data.importantVersion !== MainStore.eventData.importantVersion || data.minorVersion !== MainStore.eventData.minorVersion) {
+            if (confirm("Out of date. Update?")) {
+                return Common.downloadAndMerge()
+            } else {
+                return false
+            }
+        }
+
+        return true
+    }).then((result) => {
+        return result !== false
+    }).catch((error) => {
+        throw new Error(error)
+    })
+}
+
 module.exports.saveToLocalStorage = function() {
     localStorage.setItem("eventData", JSON.stringify(MainStore.eventData))
     localStorage.setItem("selectedEventKey", MainStore.selectedEventKey)
@@ -225,6 +269,7 @@ module.exports.createNewEventData = function(eventKey) {
         let newEventData = {
             key: eventKey,
             eventName: eventSummaryData.eventName,
+            dataVersion: dataVersion,
             importantVersion: 0,
             minorVersion: 0,
             eventData: {

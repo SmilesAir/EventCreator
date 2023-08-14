@@ -25,12 +25,15 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
 
         Common.downloadPlayerAndEventSummaryData().then(() => {
             Common.loadFromLocalStorage()
+            Common.checkVersionAndPrompt()
         })
     }
 
     saveAndUpload() {
         Common.saveToLocalStorage()
-        Common.uploadEventData()
+        if (Common.checkVersionAndPrompt()) {
+            Common.uploadEventData()
+        }
     }
 
     collapseAll() {

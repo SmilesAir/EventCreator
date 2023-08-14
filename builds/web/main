@@ -56834,6 +56834,7 @@ var StringSimilarity = __webpack_require__(/*! string-similarity */ "./node_modu
 var MainStore = __webpack_require__(/*! mainStore.js */ "./source/mainStore.js");
 var Endpoints = __webpack_require__(/*! endpoints.js */ "./source/endpoints.js");
 var poolKeyPrefix = "pool|";
+var dataVersion = 1;
 var Common = module.exports;
 module.exports.divisionNames = ["Open Pairs", "Mixed Pairs", "Open Co-op", "Women Pairs"];
 module.exports.roundNames = ["Finals", "Semifinals", "Quarterfinals", "Preliminaries"];
@@ -56849,7 +56850,6 @@ module.exports.uploadEventData = function () {
   }
   MainStore.eventData.key = MainStore.selectedEventKey;
   MainStore.eventData.eventName = eventSummaryData.eventName;
-  console.log(2, eventSummaryData.eventName);
   console.log(JSON.parse(JSON.stringify(MainStore.eventData)));
   return Common.fetchEx("IMPORT_EVENT_DATA", {
     eventKey: MainStore.eventData.key
@@ -56879,10 +56879,21 @@ module.exports.downloadAndMerge = function () {
   }).then(function (data) {
     console.log("GET_EVENT_DATA", data);
     mergePoolMap(data.eventData.eventData.poolMap, MainStore.eventData.eventData.poolMap);
+    mergeEventProperties(data.eventData);
   })["catch"](function (error) {
     console.error("Failed to download Event Data: ".concat(error));
   });
 };
+function mergeEventProperties(newEventData) {
+  var propsToCopy = ["dataVersion", "importantVersion", "minorVersion"];
+  for (var _i = 0, _propsToCopy = propsToCopy; _i < _propsToCopy.length; _i++) {
+    var prop = _propsToCopy[_i];
+    var newProp = newEventData[prop];
+    if (newProp !== undefined) {
+      MainStore.eventData[prop] = newEventData[prop];
+    }
+  }
+}
 
 // Moves data from currentPoolMap into newPoolMap
 function mergePoolMap(currentPoolMap, newPoolMap) {
@@ -56994,6 +57005,32 @@ module.exports.downloadPlayerAndEventSummaryData = function () {
   });
 };
 module.exports.onEventDataChanged = function () {};
+module.exports.checkVersionAndPrompt = function () {
+  if (MainStore.selectedEventKey === undefined || MainStore.eventData === undefined) {
+    return new Promise();
+  }
+  return Common.fetchEx("GET_EVENT_VERSION", {
+    eventKey: MainStore.selectedEventKey
+  }, {}, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }).then(function (data) {
+    if (data.importantVersion !== MainStore.eventData.importantVersion || data.minorVersion !== MainStore.eventData.minorVersion) {
+      if (confirm("Out of date. Update?")) {
+        return Common.downloadAndMerge();
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }).then(function (result) {
+    return result !== false;
+  })["catch"](function (error) {
+    throw new Error(error);
+  });
+};
 module.exports.saveToLocalStorage = function () {
   localStorage.setItem("eventData", JSON.stringify(MainStore.eventData));
   localStorage.setItem("selectedEventKey", MainStore.selectedEventKey);
@@ -57027,6 +57064,7 @@ module.exports.createNewEventData = function (eventKey) {
     var newEventData = {
       key: eventKey,
       eventName: eventSummaryData.eventName,
+      dataVersion: dataVersion,
       importantVersion: 0,
       minorVersion: 0,
       eventData: {
@@ -57305,8 +57343,8 @@ module.exports.getSimilarPlayerDataByName = function (name, nameList) {
     _iterator7.f();
   }
   var playerDatas = [];
-  for (var _i = 0, _bestNames = bestNames; _i < _bestNames.length; _i++) {
-    var data = _bestNames[_i];
+  for (var _i2 = 0, _bestNames = bestNames; _i2 < _bestNames.length; _i2++) {
+    var data = _bestNames[_i2];
     playerDatas.push(Common.findPlayerByFullName(data.name));
   }
   return playerDatas;
@@ -57352,14 +57390,15 @@ var urls = {
   GET_EVENT_SUMMARY_DATA: "https://wyach4oti8.execute-api.us-west-2.amazonaws.com/production/getAllEvents",
   GET_EVENT_DATA: "https://xf4cu1wy10.execute-api.us-west-2.amazonaws.com/production/getEventData/<eventKey>",
   GET_POINTS_DATA: "https://kvq5a3et4b.execute-api.us-west-2.amazonaws.com/production/downloadLatestPointsData",
+  GET_EVENT_VERSION: "https://xf4cu1wy10.execute-api.us-west-2.amazonaws.com/production/getEventDataVersion/<eventKey>",
   ADD_PLAYER: "https://4wnda3jb78.execute-api.us-west-2.amazonaws.com/production/addPlayer/<firstName>/lastName/<lastName>"
 };
 module.exports.buildUrl = function (key, pathParams, queryParams) {
-  var path =  false ? undefined : "https://w0wkbj0dd9.execute-api.us-west-2.amazonaws.com";
-  path += "/".concat("PRODUCTION".toLowerCase());
+  var path =  true ? "https://0uzw9x3t5g.execute-api.us-west-2.amazonaws.com" : undefined;
+  path += "/".concat("DEVELOPMENT".toLowerCase());
   var pathReplaceData = {
     "path": path,
-    "stage": "PRODUCTION".toLowerCase()
+    "stage": "DEVELOPMENT".toLowerCase()
   };
   Object.assign(pathReplaceData, pathParams);
   var url = urls[key];
@@ -57428,6 +57467,7 @@ var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) 
     _this = _super.call(this);
     Common.downloadPlayerAndEventSummaryData().then(function () {
       Common.loadFromLocalStorage();
+      Common.checkVersionAndPrompt();
     });
     return _this;
   }
@@ -57435,7 +57475,9 @@ var EventCreator = MobxReact.observer( /*#__PURE__*/function (_React$Component) 
     key: "saveAndUpload",
     value: function saveAndUpload() {
       Common.saveToLocalStorage();
-      Common.uploadEventData();
+      if (Common.checkVersionAndPrompt()) {
+        Common.uploadEventData();
+      }
     }
   }, {
     key: "collapseAll",
