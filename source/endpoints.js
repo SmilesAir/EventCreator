@@ -12,19 +12,9 @@ let urls = {
 }
 
 module.exports.buildUrl = function(key, pathParams, queryParams) {
-    let path = __STAGE__ === "DEVELOPMENT" ? "https://0uzw9x3t5g.execute-api.us-west-2.amazonaws.com" : "https://w0wkbj0dd9.execute-api.us-west-2.amazonaws.com"
-    path += `/${__STAGE__.toLowerCase()}`
-
-    let pathReplaceData = {
-        "path": path,
-        "stage": __STAGE__.toLowerCase()
-    }
-
-    Object.assign(pathReplaceData, pathParams)
-
     let url = urls[key]
-    for (let wildName in pathReplaceData) {
-        url = url.replace(`<${wildName}>`, pathReplaceData[wildName])
+    for (let wildName in pathParams) {
+        url = url.replace(`<${wildName}>`, encodeURIComponent(pathParams[wildName]))
     }
 
     let firstQueryParam = true
