@@ -258,6 +258,13 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
         })
         this.props.divisionData.teams = this.props.divisionData.teams || []
         this.props.divisionData.teams.push(players)
+
+        this.props.divisionData.teams = this.props.divisionData.teams.sort((a, b) => {
+            let aPoints = Common.getTeamRankingPointsByDivision(a, this.props.divisionData.name)
+            let bPoints = Common.getTeamRankingPointsByDivision(b, this.props.divisionData.name)
+            console.log(aPoints, bPoints)
+            return bPoints - aPoints
+        })
         this.setState(this.state)
     }
 
