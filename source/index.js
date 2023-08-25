@@ -865,8 +865,16 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
         let judgeWidgets = judgeKeys.map((key) => {
             let category = poolData.judges[key]
             let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, this.props.divisionName, this.props.roundData.name, this.props.poolName)
-            let cn = isPlayingInOtherPool ? "playingInOtherPool" : ""
-            let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined
+            let cn = ""
+            let title = undefined
+            let isPlayingInThisPool = Common.poolDataContainsCompetitor(poolData, key)
+            if (isPlayingInOtherPool) {
+                title = "Playing in other Pool"
+                cn = "playingInOtherPool"
+            } else if (isPlayingInThisPool) {
+                title = "Judging Self!"
+                cn = "judingSelf"
+            }
             return (
                 <div key={key} className={cn} title={title}>
                     <button onClick={() => this.removeJudge(key)}>X</button>
