@@ -24,6 +24,13 @@ module.exports.roundNames = [
     "Preliminaries"
 ]
 
+module.exports.poolNames = [
+    "A",
+    "B",
+    "C",
+    "D"
+]
+
 module.exports.fetchEx = function(key, pathParams, queryParams, options) {
     return fetch(Endpoints.buildUrl(key, pathParams, queryParams), options).then((response) => {
         return response.json()
@@ -440,6 +447,26 @@ module.exports.roundHasPools = function(divisionName, roundName) {
     return false
 }
 
+module.exports.getPoolDataContainingPlayer = function(playerKey) {
+    for (let divisionName of Common.divisionNames) {
+        for (let roundName of Common.roundNames) {
+            for (let poolName of Common.poolNames) {
+                let poolData = Common.getPoolData(divisionName, roundName, poolName)
+                if (poolData !== undefined) {
+                    if (Common.poolDataContainsCompetitor(poolData, playerKey)) {
+                        return poolData
+                    }
+                    if (Common.poolDataContainsJudge(poolData, playerKey)) {
+                        return poolData
+                    }
+                }
+            }
+        }
+    }
+
+    return undefined
+}
+
 module.exports.getPoolData = function(divisionName, roundName, poolName) {
     let poolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, roundName, poolName)
     return MainStore.eventData.eventData.poolMap[poolKey]
@@ -447,6 +474,10 @@ module.exports.getPoolData = function(divisionName, roundName, poolName) {
 
 module.exports.isPlayerPlayingInOtherPoolInRound = function(playerKey, divisionName, roundName, poolName) {
     let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+    if (divisionData === undefined) {
+        return false
+    }
+
     let roundData = divisionData.roundData[roundName]
     if (roundData && roundData.poolNames.length === 0) {
         return false

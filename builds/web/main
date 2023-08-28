@@ -56838,6 +56838,7 @@ var dataVersion = 1;
 var Common = module.exports;
 module.exports.divisionNames = ["Open Pairs", "Mixed Pairs", "Open Co-op", "Women Pairs"];
 module.exports.roundNames = ["Finals", "Semifinals", "Quarterfinals", "Preliminaries"];
+module.exports.poolNames = ["A", "B", "C", "D"];
 module.exports.fetchEx = function (key, pathParams, queryParams, options) {
   return fetch(Endpoints.buildUrl(key, pathParams, queryParams), options).then(function (response) {
     return response.json();
@@ -57233,21 +57234,69 @@ module.exports.roundHasPools = function (divisionName, roundName) {
   }
   return false;
 };
+module.exports.getPoolDataContainingPlayer = function (playerKey) {
+  var _iterator5 = _createForOfIteratorHelper(Common.divisionNames),
+    _step5;
+  try {
+    for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+      var divisionName = _step5.value;
+      var _iterator6 = _createForOfIteratorHelper(Common.roundNames),
+        _step6;
+      try {
+        for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+          var roundName = _step6.value;
+          var _iterator7 = _createForOfIteratorHelper(Common.poolNames),
+            _step7;
+          try {
+            for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+              var poolName = _step7.value;
+              var poolData = Common.getPoolData(divisionName, roundName, poolName);
+              if (poolData !== undefined) {
+                if (Common.poolDataContainsCompetitor(poolData, playerKey)) {
+                  return poolData;
+                }
+                if (Common.poolDataContainsJudge(poolData, playerKey)) {
+                  return poolData;
+                }
+              }
+            }
+          } catch (err) {
+            _iterator7.e(err);
+          } finally {
+            _iterator7.f();
+          }
+        }
+      } catch (err) {
+        _iterator6.e(err);
+      } finally {
+        _iterator6.f();
+      }
+    }
+  } catch (err) {
+    _iterator5.e(err);
+  } finally {
+    _iterator5.f();
+  }
+  return undefined;
+};
 module.exports.getPoolData = function (divisionName, roundName, poolName) {
   var poolKey = Common.makePoolKey(MainStore.eventData.key, divisionName, roundName, poolName);
   return MainStore.eventData.eventData.poolMap[poolKey];
 };
 module.exports.isPlayerPlayingInOtherPoolInRound = function (playerKey, divisionName, roundName, poolName) {
   var divisionData = MainStore.eventData.eventData.divisionData[divisionName];
+  if (divisionData === undefined) {
+    return false;
+  }
   var roundData = divisionData.roundData[roundName];
   if (roundData && roundData.poolNames.length === 0) {
     return false;
   }
-  var _iterator5 = _createForOfIteratorHelper(roundData.poolNames),
-    _step5;
+  var _iterator8 = _createForOfIteratorHelper(roundData.poolNames),
+    _step8;
   try {
-    for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-      var otherPoolName = _step5.value;
+    for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
+      var otherPoolName = _step8.value;
       if (otherPoolName !== poolName) {
         var otherPoolData = Common.getPoolData(divisionName, roundName, otherPoolName);
         if (Common.poolDataContainsCompetitor(otherPoolData, playerKey)) {
@@ -57256,9 +57305,9 @@ module.exports.isPlayerPlayingInOtherPoolInRound = function (playerKey, division
       }
     }
   } catch (err) {
-    _iterator5.e(err);
+    _iterator8.e(err);
   } finally {
-    _iterator5.f();
+    _iterator8.f();
   }
   return false;
 };
@@ -57296,28 +57345,28 @@ module.exports.getPlayerRankingPointsByDivision = function (playerKey, divisionN
 };
 module.exports.getTeamRankingPointsByDivision = function (playerKeys, divisionName) {
   var sum = 0;
-  var _iterator6 = _createForOfIteratorHelper(playerKeys),
-    _step6;
+  var _iterator9 = _createForOfIteratorHelper(playerKeys),
+    _step9;
   try {
-    for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-      var playerKey = _step6.value;
+    for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+      var playerKey = _step9.value;
       sum += Common.getPlayerRankingPointsByDivision(playerKey, divisionName);
     }
   } catch (err) {
-    _iterator6.e(err);
+    _iterator9.e(err);
   } finally {
-    _iterator6.f();
+    _iterator9.f();
   }
   return sum;
 };
 module.exports.getSimilarPlayerDataByName = function (name, nameList) {
   var bestNames = [];
   var maxCount = 10;
-  var _iterator7 = _createForOfIteratorHelper(nameList),
-    _step7;
+  var _iterator10 = _createForOfIteratorHelper(nameList),
+    _step10;
   try {
     var _loop = function _loop() {
-      var cachedName = _step7.value;
+      var cachedName = _step10.value;
       var similar = StringSimilarity.compareTwoStrings(name, cachedName);
       if (similar > 0) {
         if (bestNames.length < maxCount || similar > bestNames[maxCount - 1].score) {
@@ -57334,13 +57383,13 @@ module.exports.getSimilarPlayerDataByName = function (name, nameList) {
         }
       }
     };
-    for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+    for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
       _loop();
     }
   } catch (err) {
-    _iterator7.e(err);
+    _iterator10.e(err);
   } finally {
-    _iterator7.f();
+    _iterator10.f();
   }
   var playerDatas = [];
   for (var _i2 = 0, _bestNames = bestNames; _i2 < _bestNames.length; _i2++) {
@@ -59057,6 +59106,7 @@ if(false) {}
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+/* eslint-disable no-alert */
 
 
 function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
@@ -59094,8 +59144,19 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       MainStore.isPlayerMainWidgetEnabled = !MainStore.isPlayerMainWidgetEnabled;
     }
   }, {
+    key: "removePlayer",
+    value: function removePlayer(playerData) {
+      var refPoolData = Common.getPoolDataContainingPlayer(playerData.key);
+      if (refPoolData !== undefined) {
+        alert("Can't remove. Player \"".concat(playerData.firstName, " ").concat(playerData.lastName, "\" is used in ").concat(refPoolData.key));
+        return;
+      }
+      delete MainStore.eventData.eventData.playerData[playerData.key];
+    }
+  }, {
     key: "getPlayers",
     value: function getPlayers() {
+      var _this2 = this;
       if (MainStore.eventData === undefined) {
         return null;
       }
@@ -59110,15 +59171,22 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
       sortedPlayers.sort(function (a, b) {
         return b.openPoints - a.openPoints;
       });
-      for (var _i = 0, _sortedPlayers = sortedPlayers; _i < _sortedPlayers.length; _i++) {
+      var _loop = function _loop() {
         var player = _sortedPlayers[_i];
-        var _playerKey = player.playerKey;
-        var playerData = MainStore.playerData[_playerKey];
+        var playerKey = player.playerKey;
+        var playerData = MainStore.playerData[playerKey];
         if (playerData !== undefined) {
           playerWidgets.push( /*#__PURE__*/React.createElement("div", {
-            key: _playerKey
-          }, "".concat(playerWidgets.length + 1, ". ").concat(playerData.firstName + " " + playerData.lastName, " ").concat(Common.getPlayerRankingPointsByDivision(_playerKey, "Open Pairs"), " / ").concat(Common.getPlayerRankingPointsByDivision(_playerKey, "Women Pairs"))));
+            key: playerKey
+          }, "".concat(playerWidgets.length + 1, ". ").concat(playerData.firstName + " " + playerData.lastName, " ").concat(Common.getPlayerRankingPointsByDivision(playerKey, "Open Pairs"), " / ").concat(Common.getPlayerRankingPointsByDivision(playerKey, "Women Pairs")), /*#__PURE__*/React.createElement("button", {
+            onClick: function onClick() {
+              return _this2.removePlayer(playerData);
+            }
+          }, "X")));
         }
+      };
+      for (var _i = 0, _sortedPlayers = sortedPlayers; _i < _sortedPlayers.length; _i++) {
+        _loop();
       }
       return playerWidgets;
     }
@@ -59131,14 +59199,14 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
   }, {
     key: "render",
     value: function render() {
-      var _this2 = this;
+      var _this3 = this;
       if (this.state.isSideWidgetEnabled) {
         return /*#__PURE__*/React.createElement("div", {
           className: "playersSideWidget"
         }, /*#__PURE__*/React.createElement("button", {
           className: "addPlayersButton",
           onClick: function onClick(e) {
-            return _this2.onAddPlayersClicked(e);
+            return _this3.onAddPlayersClicked(e);
           }
         }, MainStore.isPlayerMainWidgetEnabled ? "-" : "+"), "Players", this.getPlayers());
       } else {
@@ -59146,12 +59214,12 @@ module.exports = MobxReact.observer( /*#__PURE__*/function (_React$Component) {
           className: "playersSideWidget collapsed"
         }, /*#__PURE__*/React.createElement("button", {
           onClick: function onClick() {
-            return _this2.togglePlayersSideWidget();
+            return _this3.togglePlayersSideWidget();
           }
         }, ">"), /*#__PURE__*/React.createElement("button", {
           className: "addPlayersButton",
           onClick: function onClick(e) {
-            return _this2.onAddPlayersClicked(e);
+            return _this3.onAddPlayersClicked(e);
           }
         }, MainStore.isPlayerMainWidgetEnabled ? "-" : "+"));
       }

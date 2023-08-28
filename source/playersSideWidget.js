@@ -1,3 +1,4 @@
+/* eslint-disable no-alert */
 "use strict"
 
 const React = require("react")
@@ -17,6 +18,16 @@ module.exports = MobxReact.observer(class PlayersSideWidget extends React.Compon
 
     onAddPlayersClicked(e) {
         MainStore.isPlayerMainWidgetEnabled = !MainStore.isPlayerMainWidgetEnabled
+    }
+
+    removePlayer(playerData) {
+        let refPoolData = Common.getPoolDataContainingPlayer(playerData.key)
+        if (refPoolData !== undefined) {
+            alert(`Can't remove. Player "${playerData.firstName} ${playerData.lastName}" is used in ${refPoolData.key}`)
+            return
+        }
+
+        delete MainStore.eventData.eventData.playerData[playerData.key]
     }
 
     getPlayers() {
@@ -44,6 +55,7 @@ module.exports = MobxReact.observer(class PlayersSideWidget extends React.Compon
                 playerWidgets.push(
                     <div key={playerKey}>
                         {`${playerWidgets.length + 1}. ${playerData.firstName + " " + playerData.lastName} ${Common.getPlayerRankingPointsByDivision(playerKey, "Open Pairs")} / ${Common.getPlayerRankingPointsByDivision(playerKey, "Women Pairs")}`}
+                        <button onClick={() => this.removePlayer(playerData)}>X</button>
                     </div>
                 )
             }
