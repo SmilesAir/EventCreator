@@ -91,10 +91,7 @@ module.exports = MobxReact.observer(class PlayerMainWidget extends React.Compone
         }
 
         matchData.isAdded = true
-        MainStore.eventData.eventData.playerData[matchData.key] = {
-            key: matchData.key,
-            name: matchData.fullName
-        }
+        this.addPlayer(matchData.key, matchData.fullName)
 
         this.onEventPlayersChanged()
     }
@@ -124,17 +121,39 @@ module.exports = MobxReact.observer(class PlayerMainWidget extends React.Compone
         matchData.isAdded = true
         matchData.key = playerData.key
 
-        MainStore.eventData.eventData.playerData[playerData.key] = {
-            key: playerData.key,
-            name: playerData.fullName
-        }
+        this.addPlayer(playerData.key, playerData.fullName)
 
         this.onEventPlayersChanged()
+    }
+
+    getOriginalKeyFromAliasKey(aliasKey) {
+        let aliasData = MainStore.playerData[aliasKey]
+
+        return aliasData && aliasData.aliasKey
+    }
+
+    addPlayer(key, fullName) {
+        let foundOriginalKey = this.getOriginalKeyFromAliasKey(key)
+        console.log(1, key, foundOriginalKey, MainStore.playerData[key])
+        if (foundOriginalKey !== undefined) {
+            let originalPlayerData = MainStore.playerData[foundOriginalKey]
+            this.addPlayer(foundOriginalKey, originalPlayerData.firstName + " " + originalPlayerData.lastName)
+        } else {
+            MainStore.eventData.eventData.playerData[key] = {
+                key: key,
+                name: fullName
+            }
+        }
     }
 
     isPlayerAdded(playerKey) {
         if (MainStore.eventData === undefined) {
             return false
+        }
+
+        let foundOriginalKey = this.getOriginalKeyFromAliasKey(playerKey)
+        if (foundOriginalKey !== undefined) {
+            return this.isPlayerAdded(foundOriginalKey)
         }
 
         return MainStore.eventData.eventData.playerData[playerKey] !== undefined
