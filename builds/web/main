@@ -56818,6 +56818,7 @@ module.exports.downloadAndMerge = function () {
     console.log("GET_EVENT_DATA", data);
     mergePoolMap(data.eventData.eventData.poolMap, MainStore.eventData.eventData.poolMap);
     mergeEventProperties(data.eventData);
+    Common.saveToLocalStorage();
   })["catch"](function (error) {
     console.error("Failed to download Event Data: ".concat(error));
   });
@@ -56910,6 +56911,7 @@ module.exports.downloadAndReplace = function () {
   }).then(function (data) {
     console.log("GET_EVENT_DATA", data);
     MainStore.eventData = data.eventData;
+    Common.saveToLocalStorage();
   })["catch"](function (error) {
     console.error("Failed to download Event Data: ".concat(error));
   });

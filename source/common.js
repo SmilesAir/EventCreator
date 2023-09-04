@@ -75,6 +75,7 @@ module.exports.downloadAndMerge = function() {
 
         mergePoolMap(data.eventData.eventData.poolMap, MainStore.eventData.eventData.poolMap)
         mergeEventProperties(data.eventData)
+        Common.saveToLocalStorage()
     }).catch((error) => {
         console.error(`Failed to download Event Data: ${error}`)
     })
@@ -153,6 +154,7 @@ module.exports.downloadAndReplace = function() {
         console.log("GET_EVENT_DATA", data)
 
         MainStore.eventData = data.eventData
+        Common.saveToLocalStorage()
 
     }).catch((error) => {
         console.error(`Failed to download Event Data: ${error}`)
