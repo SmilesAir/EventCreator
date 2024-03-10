@@ -14,8 +14,8 @@
     },
     "main": "source/index.js",
     "scripts": {
-        "start": "npm i && codeglue --mode=server --stage=development",
-        "start:production": "npm i && codeglue --mode=server --stage=production",
+        "start": "npm i && codeglue --mode=server --stage=development --port 8081",
+        "start:production": "npm i && codeglue --mode=server --stage=production --port 8081",
         "build": "npm i && codeglue --stage=development",
         "build:production": "npm i && codeglue --stage=production",
         "deploy": "npm run build && sls deploy",

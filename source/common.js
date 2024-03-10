@@ -101,6 +101,7 @@ function mergePoolMap(currentPoolMap, newPoolMap) {
         let newPoolData = newPoolMap[poolKey]
         let currentPoolData = currentPoolMap[poolKey]
         if (currentPoolData !== undefined) {
+            newPoolData.isLocked = currentPoolData.isLocked
             for (let currentTeam of currentPoolData.teamData) {
                 if (hasTeamResults(currentTeam)) {
                     let found = false
@@ -210,7 +211,7 @@ module.exports.onEventDataChanged = function() {
 
 }
 
-module.exports.checkVersionAndPrompt = function() {
+module.exports.checkVersionAndMergeUpdate = function(shouldPrompt) {
     if (MainStore.selectedEventKey === undefined || MainStore.eventData === undefined) {
         return new Promise()
     }
@@ -224,7 +225,7 @@ module.exports.checkVersionAndPrompt = function() {
         }
     }).then((data) => {
         if (data.importantVersion !== MainStore.eventData.importantVersion || data.minorVersion !== MainStore.eventData.minorVersion) {
-            if (confirm("Out of date. Update?")) {
+            if (shouldPrompt !== true || confirm("Out of date. Update?")) {
                 return Common.downloadAndMerge()
             } else {
                 return false
