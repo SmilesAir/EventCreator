@@ -96,27 +96,44 @@ function mergeEventProperties(newEventData) {
     }
 }
 
+function getRulesIdForPool(poolKey) {
+    let poolKeyParts = poolKey.split("|")
+    if (poolKeyParts.length !== 5) {
+        console.error(`Bad pool key ${poolKey}`)
+    }
+
+    let divisionName = poolKeyParts[2]
+    let divisionData = MainStore.eventData.eventData.divisionData[divisionName]
+    if (divisionData !== undefined) {
+        return divisionData.rulesId
+    }
+
+    return undefined
+}
+
 // Moves data from currentPoolMap into newPoolMap
 function mergePoolMap(currentPoolMap, newPoolMap) {
     for (let poolKey in newPoolMap) {
-        let newPoolData = newPoolMap[poolKey]
-        let currentPoolData = currentPoolMap[poolKey]
-        if (currentPoolData !== undefined) {
-            newPoolData.isLocked = currentPoolData.isLocked
-            for (let currentTeam of currentPoolData.teamData) {
-                if (hasTeamResults(currentTeam)) {
-                    let found = false
-                    for (let newTeamIndex = 0; newTeamIndex < newPoolData.teamData.length; ++newTeamIndex) {
-                        let newTeam = newPoolData.teamData[newTeamIndex]
-                        if (hasSamePlayers(currentTeam, newTeam)) {
-                            found = true
-                            newPoolData.teamData[newTeamIndex] = currentTeam
-                            break
+        if (getRulesIdForPool(poolKey) !== "SimpleRanking") {
+            let newPoolData = newPoolMap[poolKey]
+            let currentPoolData = currentPoolMap[poolKey]
+            if (currentPoolData !== undefined) {
+                newPoolData.isLocked = currentPoolData.isLocked
+                for (let currentTeam of currentPoolData.teamData) {
+                    if (hasTeamResults(currentTeam)) {
+                        let found = false
+                        for (let newTeamIndex = 0; newTeamIndex < newPoolData.teamData.length; ++newTeamIndex) {
+                            let newTeam = newPoolData.teamData[newTeamIndex]
+                            if (hasSamePlayers(currentTeam, newTeam)) {
+                                found = true
+                                newPoolData.teamData[newTeamIndex] = currentTeam
+                                break
+                            }
                         }
-                    }
 
-                    if (!found) {
-                        newPoolData.teamData.push(currentTeam)
+                        if (!found) {
+                            newPoolData.teamData.push(currentTeam)
+                        }
                     }
                 }
             }
