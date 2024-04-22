@@ -57,6 +57,7 @@ module.exports.uploadEventData = function() {
         console.log(response)
     }).catch((error) => {
         console.error(`Trying to update event state "${error}"`)
+        alert(`Failed to Upload: ${error}`)
     })
 }
 
