@@ -1,1 +1,2 @@
-npm run deploy
+npm run deploy:production
+pause

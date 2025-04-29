@@ -446,7 +446,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
     getPoolWidgets() {
         return this.props.roundData.poolNames.map((name, i) => {
             let poolKey = Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, this.props.roundData.name, name)
-            return <PoolWidget key={i} divisionName={this.props.divisionData.name} roundData={this.props.roundData} poolName={name} poolKey={poolKey} />
+            return <PoolWidget key={i} divisionData={this.props.divisionData} roundData={this.props.roundData} poolName={name} poolKey={poolKey} />
         })
     }
 
@@ -688,13 +688,13 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     }
 
     getAddTeamOptions() {
-        let divisionData = MainStore.eventData.eventData.divisionData[this.props.divisionName]
+        let divisionData = MainStore.eventData.eventData.divisionData[this.props.divisionData.name]
         if (divisionData === undefined || divisionData.teams === undefined) {
             return []
         }
 
         let poolDatas = this.props.roundData.poolNames.map((poolName) => {
-            return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, this.props.divisionName, this.props.roundData.name, poolName)]
+            return MainStore.eventData.eventData.poolMap[Common.makePoolKey(MainStore.eventData.key, this.props.divisionData.name, this.props.roundData.name, poolName)]
         }).filter((item) => item !== undefined)
 
         let options = []
@@ -757,7 +757,11 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
                 sortedScores.push(teamData.teamScore)
             }
         }
-        sortedScores.sort((a, b) => b - a)
+        if (this.props.divisionData.rulesId === "SimpleRanking") {
+            sortedScores.sort((a, b) => a - b)
+        } else {
+            sortedScores.sort((a, b) => b - a)
+        }
         let widgets = poolData.teamData.map((teamData, index) => {
             let sortedScoreIndex = sortedScores.findIndex((score) => score === teamData.teamScore)
             let teamRank = sortedScoreIndex >= 0 ? sortedScoreIndex + 1 : undefined
@@ -811,7 +815,7 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
 
         for (let playerKey of filteredPlayerKeys) {
             let playerData = MainStore.playerData[playerKey]
-            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, this.props.divisionName, this.props.roundData.name, this.props.poolName)
+            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, this.props.divisionData.name, this.props.roundData.name, this.props.poolName)
             let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined
             let cn = `judge ${isPlayingInOtherPool ? "playingInOtherPool" : ""}`
             judgeWidgets.push(
@@ -864,7 +868,7 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
         let judgeKeys = Common.getSortedJudgeKeyArray(poolData)
         let judgeWidgets = judgeKeys.map((key) => {
             let category = poolData.judges[key]
-            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, this.props.divisionName, this.props.roundData.name, this.props.poolName)
+            let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(key, this.props.divisionData.name, this.props.roundData.name, this.props.poolName)
             let cn = ""
             let title = undefined
             let isPlayingInThisPool = Common.poolDataContainsCompetitor(poolData, key)
@@ -904,7 +908,7 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
     render() {
         return (
             <div className="poolWidget">
-                {`${this.props.divisionName} ${this.props.roundData.name} ${this.props.poolName}`}
+                {`${this.props.divisionData.name} ${this.props.roundData.name} ${this.props.poolName}`}
                 <button onClick={() => this.onDeletePool()}>Delete Pool</button>
                 <h3>
                     Teams
