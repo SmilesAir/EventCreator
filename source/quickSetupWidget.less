@@ -1,0 +1,126 @@
+.quickSetupWidget {
+    display: flex;
+    flex-direction: column;
+
+    li {
+        font-size: 1.5em;
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+    }
+
+    .loading {
+        position: fixed;
+        left: 2%;
+        top: 2%;
+        width: 96%;
+        height: 96%;
+        padding: .1em;
+
+        background-color: aliceblue;
+        border: solid black 6px;
+
+        font-size: 5em;
+
+        z-index: 9999;
+    }
+
+    .eventSelection {
+        label {
+            display: flex;
+            flex-direction: row;
+            font-size: 1.5em;
+
+            input {
+                font-size: 1em;
+            }
+        }
+    }
+
+    .buttonControls {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 10px;
+
+        button {
+            font-size: 1.5em;
+            flex-grow: 1;
+            min-height: 60px;
+        }
+    }
+
+    .teamsWidget {
+        display: flex;
+        flex-direction: column;
+
+        .teamInput {
+            display: flex;
+            flex-direction: row;
+            margin: 2px;
+            padding-bottom: 4px;
+            border-bottom: solid 2px lightgray;
+
+            font-size: 2em;
+            button {
+                margin-right: 4px;
+                font-size: .75em;
+            }
+        }
+
+        .playerPicker {
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+
+            left: 2%;
+            top: 2%;
+            width: 96%;
+            height: 96%;
+
+            border: black solid 3px;
+            background-color: aliceblue;
+
+            font-size: 3em;
+
+            button {
+                font-size: 1em;
+            }
+
+            input {
+                font-size: 1em;
+            }
+
+            .searchResults {
+                display: flex;
+                flex-direction: column;
+
+                margin-top: 5px;
+            }
+        }
+    }
+
+    .roundsWidget {
+        display: flex;
+        flex-direction: column;
+
+        .pool {
+            display: flex;
+            flex-direction: column;
+            .team {
+                display: flex;
+                flex-direction: row;
+                margin: 4px;
+            }
+        }
+
+        font-size: 2em;
+        button {
+            font-size: .75em;
+            min-width: 2em;
+        }
+    }
+}

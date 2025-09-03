@@ -11,8 +11,13 @@ const MainStore = require("mainStore.js")
 const Common = require("common.js")
 const PlayersMainWidget = require("playersMainWidget.js")
 const PlayersSideWidget = require("playersSideWidget.js")
+const QuickSetupWidget = require("quickSetupWidget.js")
 
 require("index.less")
+
+history.pushState(null, null, window.location.href)
+history.back()
+window.onpopstate = () => history.forward()
 
 let collapseCallbacks = []
 function registerCollapseCallback(callback) {
@@ -23,10 +28,15 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
     constructor() {
         super()
 
-        Common.downloadPlayerAndEventSummaryData().then(() => {
-            Common.loadFromLocalStorage()
-            Common.checkVersionAndMergeUpdate()
-        })
+        let url = new URL(window.location.href)
+        MainStore.startup = url.searchParams.get("startup") || "full"
+
+        if (MainStore.startup === "full") {
+            Common.downloadPlayerAndEventSummaryData().then(() => {
+                Common.loadFromLocalStorage()
+                Common.checkVersionAndMergeUpdate()
+            })
+        }
     }
 
     async saveAndUpload() {
@@ -48,28 +58,32 @@ const EventCreator = MobxReact.observer(class EventCreator extends React.Compone
     }
 
     render() {
-        return (
-            <div className="topContainer">
-                <div className="menu">
-                    <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey)}>New</button>
-                    <button onClick={() => this.saveAndUpload()}>Save and Upload</button>
-                    <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
-                    <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
-                    <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
-                    <button onClick={() => this.collapseAll()}>Collapse All</button>
-                </div>
-                <div id="scrollContainer" className="scrollContainer">
-                    <EventWidget />
-                    <div className="bodyContainer">
-                        <PlayersSideWidget />
-                        <div className="mainWidget">
-                            <PlayersMainWidget />
-                            <DivisionListWidget />
+        if (MainStore.startup === "full") {
+            return (
+                <div className="topContainer">
+                    <div className="menu">
+                        <button onClick={() => Common.createNewEventData(MainStore.selectedEventKey)}>New</button>
+                        <button onClick={() => this.saveAndUpload()}>Save and Upload</button>
+                        <button onClick={() => Common.downloadAndMerge()}>Download and Merge</button>
+                        <button onClick={() => Common.downloadAndReplace()}>Download and Replace</button>
+                        <a href="https://forms.gle/1ArbQ1b6HNMso1iu7" target="_blank" rel="noreferrer">Create New Event</a>
+                        <button onClick={() => this.collapseAll()}>Collapse All</button>
+                    </div>
+                    <div id="scrollContainer" className="scrollContainer">
+                        <EventWidget />
+                        <div className="bodyContainer">
+                            <PlayersSideWidget />
+                            <div className="mainWidget">
+                                <PlayersMainWidget />
+                                <DivisionListWidget />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        )
+            )
+        } else {
+            return <QuickSetupWidget/>
+        }
     }
 })
 
@@ -440,7 +454,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
     }
 
     onAddPool() {
-        this.props.roundData.poolNames.push(String.fromCharCode("A".charCodeAt(0) + this.props.roundData.poolNames.length))
+        this.props.roundData.poolNames.push(Common.getPoolLetter(this.props.roundData.poolNames.length))
     }
 
     getPoolWidgets() {
@@ -566,6 +580,7 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
 
     seedRoundFromPreviousRound() {
         // Only works for finals for now
+        // Does not support SimpleRanking
         let roundData = this.props.roundData
         if (roundData.name !== "Finals") {
             return

@@ -207,7 +207,7 @@ module.exports.downloadPlayerAndEventSummaryData = function() {
     }).then((data) => {
         MainStore.eventSummaryData = data.allEventSummaryData
 
-        //console.log("GET_EVENT_SUMMARY_DATA", data.allEventSummaryData)
+        console.log("GET_EVENT_SUMMARY_DATA", data.allEventSummaryData)
     }).catch((error) => {
         console.error(`Failed to download Event data: ${error}`)
     }).then(() => {
@@ -266,6 +266,7 @@ module.exports.saveToLocalStorage = function() {
 module.exports.loadFromLocalStorage = function() {
     MainStore.selectedEventKey = localStorage.getItem("selectedEventKey") || undefined
     let localStorageEventData = localStorage.getItem("eventData")
+    console.log(JSON.parse(localStorageEventData))
     MainStore.eventData = localStorageEventData && JSON.parse(localStorageEventData) || undefined
 
     if (MainStore.eventData !== undefined) {
@@ -291,25 +292,28 @@ module.exports.updateCachedRegisteredFullNames = function() {
     }
 }
 
+module.exports.createNewEventDataJson = function(eventKey, eventName) {
+    return {
+        key: eventKey,
+        eventName: eventName,
+        dataVersion: dataVersion,
+        importantVersion: 0,
+        minorVersion: 0,
+        eventData: {
+            playerData: {},
+            divisionData: {},
+            poolMap: {}
+        },
+        eventState: {},
+        controllerState: {},
+        judgesState: {}
+    }
+}
+
 module.exports.createNewEventData = function(eventKey) {
     let eventSummaryData = MainStore.eventSummaryData[MainStore.selectedEventKey]
     if (eventSummaryData !== undefined) {
-        let newEventData = {
-            key: eventKey,
-            eventName: eventSummaryData.eventName,
-            dataVersion: dataVersion,
-            importantVersion: 0,
-            minorVersion: 0,
-            eventData: {
-                playerData: {},
-                divisionData: {},
-                poolMap: {}
-            },
-            eventState: {},
-            controllerState: {},
-            judgesState: {}
-        }
-
+        let newEventData = Common.createNewEventDataJson(eventKey, eventSummaryData.eventName)
         MainStore.eventData = newEventData
         MainStore.selectedEventKey = eventKey
 
@@ -608,4 +612,28 @@ module.exports.getPreviousRoundName = function(roundName) {
     }
 
     return index + 1 < Common.roundNames.length ? Common.roundNames[index + 1] : undefined
+}
+
+module.exports.getPoolLetter = function(index) {
+    return String.fromCharCode("A".charCodeAt(0) + index)
+}
+
+module.exports.uploadEvent = function(eventId, eventName, startDate, endDate) {
+    return Common.fetchEx("SET_EVENT_SUMMARY", {
+        eventId: eventId
+    }, {}, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            eventName: eventName,
+            startDate: getDateString(new Date(startDate)),
+            endDate: getDateString(new Date(endDate))
+        })
+    })
+}
+
+function getDateString(date) {
+    return date.toISOString().split("T")[0]
 }

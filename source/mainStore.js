@@ -10,5 +10,6 @@ module.exports = Mobx.observable({
     eventSummaryData: undefined,
     pointsData: undefined,
     cachedFullNames: [],
-    cachedRegisteredFullNames: []
+    cachedRegisteredFullNames: [],
+    startup: undefined
 })
