@@ -415,6 +415,7 @@ const DivisionWidget = MobxReact.observer(class DivisionWidget extends React.Com
                 <optgroup>
                     <option key="Fpa2020" value="Fpa2020">FPA 2020</option>
                     <option key="SimpleRanking" value="SimpleRanking">Simple Ranking</option>
+                    <option key="Goe" value="Goe">Grade of Execution</option>
                 </optgroup>
             </select>
         )
@@ -765,6 +766,10 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
 
     getTeamsWidget() {
         let poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey]
+        if (poolData === undefined) {
+            return null
+        }
+
         // Does not support ties
         let sortedScores = []
         for (let teamData of poolData.teamData) {
@@ -833,11 +838,27 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
             let isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, this.props.divisionData.name, this.props.roundData.name, this.props.poolName)
             let title = isPlayingInOtherPool ? "Playing in other Pool" : undefined
             let cn = `judge ${isPlayingInOtherPool ? "playingInOtherPool" : ""}`
+            let rulesId = this.props.divisionData.rulesId
+            let judgeButtons = []
+            switch (rulesId) {
+            case "Fpa2020":
+                judgeButtons = [
+                    <button key="1" onClick={() => this.onAddJudge(playerKey, "Diff")}>Diff</button>,
+                    <button key="2" onClick={() => this.onAddJudge(playerKey, "Variety")}>Variety</button>,
+                    <button key="3" onClick={() => this.onAddJudge(playerKey, "ExAi")}>ExAi</button>
+                ]
+                break
+            case "Goe":
+                judgeButtons = [
+                    <button key="1" onClick={() => this.onAddJudge(playerKey, "GoeDiff")}>Diff</button>,
+                    <button key="2" onClick={() => this.onAddJudge(playerKey, "GoeTech")}>Tech</button>,
+                    <button key="3" onClick={() => this.onAddJudge(playerKey, "GoeSub")}>Sub</button>
+                ]
+                break
+            }
             judgeWidgets.push(
                 <div key={playerKey} className={cn} title={title}>
-                    <button onClick={() => this.onAddJudge(playerKey, "Diff")}>Diff</button>
-                    <button onClick={() => this.onAddJudge(playerKey, "Variety")}>Variety</button>
-                    <button onClick={() => this.onAddJudge(playerKey, "ExAi")}>ExAi</button>
+                    {judgeButtons}
                     <div className="name">
                         {Common.getPlayerNameString(playerKey)}
                     </div>

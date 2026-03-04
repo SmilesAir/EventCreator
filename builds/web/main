@@ -66200,7 +66200,10 @@ var DivisionWidget = MobxReact.observer(/*#__PURE__*/function (_React$Component4
       }, "FPA 2020"), /*#__PURE__*/React.createElement("option", {
         key: "SimpleRanking",
         value: "SimpleRanking"
-      }, "Simple Ranking")));
+      }, "Simple Ranking"), /*#__PURE__*/React.createElement("option", {
+        key: "Goe",
+        value: "Goe"
+      }, "Grade of Execution")));
     }
   }, {
     key: "render",
@@ -66642,6 +66645,10 @@ var PoolWidget = MobxReact.observer(/*#__PURE__*/function (_React$Component6) {
     value: function getTeamsWidget() {
       var _this22 = this;
       var poolData = MainStore.eventData.eventData.poolMap[this.props.poolKey];
+      if (poolData === undefined) {
+        return null;
+      }
+
       // Does not support ties
       var sortedScores = [];
       var _iterator10 = _createForOfIteratorHelper(poolData.teamData),
@@ -66733,23 +66740,51 @@ var PoolWidget = MobxReact.observer(/*#__PURE__*/function (_React$Component6) {
         var isPlayingInOtherPool = Common.isPlayerPlayingInOtherPoolInRound(playerKey, _this23.props.divisionData.name, _this23.props.roundData.name, _this23.props.poolName);
         var title = isPlayingInOtherPool ? "Playing in other Pool" : undefined;
         var cn = "judge ".concat(isPlayingInOtherPool ? "playingInOtherPool" : "");
+        var rulesId = _this23.props.divisionData.rulesId;
+        var judgeButtons = [];
+        switch (rulesId) {
+          case "Fpa2020":
+            judgeButtons = [/*#__PURE__*/React.createElement("button", {
+              key: "1",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "Diff");
+              }
+            }, "Diff"), /*#__PURE__*/React.createElement("button", {
+              key: "2",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "Variety");
+              }
+            }, "Variety"), /*#__PURE__*/React.createElement("button", {
+              key: "3",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "ExAi");
+              }
+            }, "ExAi")];
+            break;
+          case "Goe":
+            judgeButtons = [/*#__PURE__*/React.createElement("button", {
+              key: "1",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "GoeDiff");
+              }
+            }, "Diff"), /*#__PURE__*/React.createElement("button", {
+              key: "2",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "GoeTech");
+              }
+            }, "Tech"), /*#__PURE__*/React.createElement("button", {
+              key: "3",
+              onClick: function onClick() {
+                return _this23.onAddJudge(playerKey, "GoeSub");
+              }
+            }, "Sub")];
+            break;
+        }
         judgeWidgets.push(/*#__PURE__*/React.createElement("div", {
           key: playerKey,
           className: cn,
           title: title
-        }, /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this23.onAddJudge(playerKey, "Diff");
-          }
-        }, "Diff"), /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this23.onAddJudge(playerKey, "Variety");
-          }
-        }, "Variety"), /*#__PURE__*/React.createElement("button", {
-          onClick: function onClick() {
-            return _this23.onAddJudge(playerKey, "ExAi");
-          }
-        }, "ExAi"), /*#__PURE__*/React.createElement("div", {
+        }, judgeButtons, /*#__PURE__*/React.createElement("div", {
           className: "name"
         }, Common.getPlayerNameString(playerKey)), /*#__PURE__*/React.createElement("div", {
           className: "country"
