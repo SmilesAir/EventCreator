@@ -65300,6 +65300,10 @@ module.exports.getSortedJudgeKeyArray = function (poolData) {
     return data.judgeKey;
   });
 };
+module.exports.getOriginalKeyFromAliasKey = function (aliasKey) {
+  var aliasData = MainStore.playerData[aliasKey];
+  return aliasData && (aliasData.aliasKey !== undefined ? aliasData.aliasKey : aliasKey);
+};
 module.exports.poolDataContainsCompetitor = function (poolData, competitorKey) {
   if (poolData === undefined) {
     return false;
@@ -65310,7 +65314,7 @@ module.exports.poolDataContainsCompetitor = function (poolData, competitorKey) {
     for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
       var teamData = _step2.value;
       if (teamData.players.find(function (key) {
-        return key === competitorKey;
+        return Common.getOriginalKeyFromAliasKey(key) === Common.getOriginalKeyFromAliasKey(competitorKey);
       }) !== undefined) {
         return true;
       }

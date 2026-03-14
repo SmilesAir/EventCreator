@@ -401,13 +401,19 @@ module.exports.getSortedJudgeKeyArray = function(poolData) {
     return judges.map((data) => data.judgeKey)
 }
 
+module.exports.getOriginalKeyFromAliasKey = function(aliasKey) {
+    let aliasData = MainStore.playerData[aliasKey]
+
+    return aliasData && (aliasData.aliasKey !== undefined ? aliasData.aliasKey : aliasKey)
+}
+
 module.exports.poolDataContainsCompetitor = function(poolData, competitorKey) {
     if (poolData === undefined) {
         return false
     }
 
     for (let teamData of poolData.teamData) {
-        if (teamData.players.find((key) => key === competitorKey) !== undefined) {
+        if (teamData.players.find((key) => Common.getOriginalKeyFromAliasKey(key) === Common.getOriginalKeyFromAliasKey(competitorKey)) !== undefined) {
             return true
         }
     }
