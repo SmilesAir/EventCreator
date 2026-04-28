@@ -332,7 +332,8 @@ module.exports.findPlayerByFullName = function(inFullName) {
         let playerData = MainStore.playerData[key]
         let fullName = playerData.firstName + " " + playerData.lastName
         if (inFullName === fullName) {
-            return playerData
+            let originalKey = Common.getOriginalKeyFromAliasKey(playerData.key)
+            return MainStore.playerData[originalKey]
         }
     }
 
@@ -403,8 +404,15 @@ module.exports.getSortedJudgeKeyArray = function(poolData) {
 
 module.exports.getOriginalKeyFromAliasKey = function(aliasKey) {
     let aliasData = MainStore.playerData[aliasKey]
+    if (aliasData === undefined) {
+        return aliasKey
+    }
 
-    return aliasData && (aliasData.aliasKey !== undefined ? aliasData.aliasKey : aliasKey)
+    if (aliasData.aliasKey === undefined) {
+        return aliasKey
+    }
+
+    return Common.getOriginalKeyFromAliasKey(aliasData.aliasKey)
 }
 
 module.exports.poolDataContainsCompetitor = function(poolData, competitorKey) {

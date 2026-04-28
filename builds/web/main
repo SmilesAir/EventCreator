@@ -65243,7 +65243,8 @@ module.exports.findPlayerByFullName = function (inFullName) {
     var playerData = MainStore.playerData[key];
     var fullName = playerData.firstName + " " + playerData.lastName;
     if (inFullName === fullName) {
-      return playerData;
+      var originalKey = Common.getOriginalKeyFromAliasKey(playerData.key);
+      return MainStore.playerData[originalKey];
     }
   }
   return undefined;
@@ -65302,7 +65303,15 @@ module.exports.getSortedJudgeKeyArray = function (poolData) {
 };
 module.exports.getOriginalKeyFromAliasKey = function (aliasKey) {
   var aliasData = MainStore.playerData[aliasKey];
-  return aliasData && (aliasData.aliasKey !== undefined ? aliasData.aliasKey : aliasKey);
+  if (aliasData === undefined) {
+    console.log(1, aliasKey);
+    return aliasKey;
+  }
+  if (aliasData.aliasKey === undefined) {
+    console.log(2, aliasKey);
+    return aliasKey;
+  }
+  return Common.getOriginalKeyFromAliasKey(aliasData.aliasKey);
 };
 module.exports.poolDataContainsCompetitor = function (poolData, competitorKey) {
   if (poolData === undefined) {
