@@ -841,6 +841,7 @@ const PoolWidget = MobxReact.observer(class PoolWidget extends React.Component {
             let rulesId = this.props.divisionData.rulesId
             let judgeButtons = []
             switch (rulesId) {
+            case undefined:
             case "Fpa2020":
                 judgeButtons = [
                     <button key="1" onClick={() => this.onAddJudge(playerKey, "Diff")}>Diff</button>,

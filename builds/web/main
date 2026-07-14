@@ -65304,11 +65304,9 @@ module.exports.getSortedJudgeKeyArray = function (poolData) {
 module.exports.getOriginalKeyFromAliasKey = function (aliasKey) {
   var aliasData = MainStore.playerData[aliasKey];
   if (aliasData === undefined) {
-    console.log(1, aliasKey);
     return aliasKey;
   }
   if (aliasData.aliasKey === undefined) {
-    console.log(2, aliasKey);
     return aliasKey;
   }
   return Common.getOriginalKeyFromAliasKey(aliasData.aliasKey);
@@ -66756,6 +66754,7 @@ var PoolWidget = MobxReact.observer(/*#__PURE__*/function (_React$Component6) {
         var rulesId = _this23.props.divisionData.rulesId;
         var judgeButtons = [];
         switch (rulesId) {
+          case undefined:
           case "Fpa2020":
             judgeButtons = [/*#__PURE__*/React.createElement("button", {
               key: "1",
