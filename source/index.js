@@ -560,6 +560,14 @@ const RoundWidget = MobxReact.observer(class RoundWidget extends React.Component
             for (let poolData of poolDatas) {
                 poolData.teamData = []
             }
+
+            // Top 8 seeds get byes in Quarters, top 16 seeds get byes in Prelims
+            if (this.props.roundData.name === Common.roundNames[2] && sortedTeams.length > 16) {
+                sortedTeams = sortedTeams.slice(0, sortedTeams.length - 8)
+            } else if (this.props.roundData.name === Common.roundNames[3] && sortedTeams.length > 24) {
+                sortedTeams = sortedTeams.slice(0, sortedTeams.length - 16)
+            }
+
             let teamIndex = sortedTeams.length - 1
             let dir = 1
             while (teamIndex >= 0) {

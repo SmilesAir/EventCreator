@@ -66399,10 +66399,17 @@ var RoundWidget = MobxReact.observer(/*#__PURE__*/function (_React$Component5) {
             var _poolData2 = _step7.value;
             _poolData2.teamData = [];
           }
+
+          // Top 8 seeds get byes in Quarters, top 16 seeds get byes in Prelims
         } catch (err) {
           _iterator7.e(err);
         } finally {
           _iterator7.f();
+        }
+        if (this.props.roundData.name === Common.roundNames[2] && sortedTeams.length > 16) {
+          sortedTeams = sortedTeams.slice(0, sortedTeams.length - 8);
+        } else if (this.props.roundData.name === Common.roundNames[3] && sortedTeams.length > 24) {
+          sortedTeams = sortedTeams.slice(0, sortedTeams.length - 16);
         }
         var teamIndex = sortedTeams.length - 1;
         var dir = 1;
